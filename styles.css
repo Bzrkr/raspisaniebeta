@@ -194,10 +194,17 @@ body {
        
     }
       .current-time-slot-mobile {
-      
-      box-shadow: 0px 0px 2px 4px #00f7ff ;
-  
+        box-shadow: 0px 0px 2px 4px #00f7ff;
+        animation: shadowPulse 2s infinite alternate;
     }
+    
+ @keyframes shadowPulse {
+        0% {
+            box-shadow: 0px 0px 2px 4px #cbfdff;
+        }
+        100% {
+            box-shadow: 0px 0px 2px 4px #00f7ff;
+        }}
     .header-cell.auditory-header {
         display: none;
     }
