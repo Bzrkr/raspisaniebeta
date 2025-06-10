@@ -60,7 +60,7 @@ const dayNames = ["Воскресенье", "Понедельник", "Втор�
                 
                 // Обновляем отображение недели
                 const dayName = dayNames[today.getDay()]; 
-                document.getElementById('weekDisplay').textContent = `${today.toLocaleDateString()} (${dayName}), ${currentWeekNumber}-я учебная неделя 🗓️`;
+                document.getElementById('weekDisplay').textContent = `${today.toLocaleDateString()} (${dayName}), ${currentWeekNumber}-я учебная неделя`;
                 
                 // Загружаем расписание для текущей даты
                 await updateSchedule(today, currentWeekNumber);
@@ -345,133 +345,101 @@ const dayNames = ["Воскресенье", "Понедельник", "Втор�
             }
         }
 
-     function createMobileVersion(results, date, weekNumber, isToday, currentSlotIndex) {
-    // Удаляем предыдущую мобильную версию, если она есть
-    const oldMobileContainer = document.getElementById('mobile-schedules');
-    if (oldMobileContainer) {
-        oldMobileContainer.remove();
-    }
+        function createMobileVersion(results, date, weekNumber, isToday, currentSlotIndex) {
+            // Удаляем предыдущую мобильную версию, если она есть
+            const oldMobileContainer = document.getElementById('mobile-schedules');
+            if (oldMobileContainer) {
+                oldMobileContainer.remove();
+            }
 
-    // Проверяем, нужно ли показывать мобильную версию
-    if (window.innerWidth > 768) {
-        document.getElementById('schedules-container').style.display = 'block';
-        return;
-    }
+            // Проверяем, нужно ли показывать мобильную версию
+            if (window.innerWidth > 768) {
+                document.getElementById('schedules-container').style.display = 'block';
+                return;
+            }
 
-    // Создаем контейнер для мобильной версии
-    const mobileContainer = document.createElement('div');
-    mobileContainer.id = 'mobile-schedules';
+            // Создаем контейнер для мобильной версии
+            const mobileContainer = document.createElement('div');
+            mobileContainer.id = 'mobile-schedules';
 
-    // Для каждого временного интервала
-    timeSlotsOrder.forEach((timeSlot, timeIndex) => {
-        const timeContainer = document.createElement('div');
-        timeContainer.className = 'mobile-time-container';
-        
-        // Подсвечиваем текущий временной интервал
-        if (isToday && timeIndex === currentSlotIndex) {
-            timeContainer.classList.add('current-time-slot-mobile');
-        }
-        
-        // Заголовок времени
-        const timeHeader = document.createElement('div');
-        timeHeader.className = 'time-cell';
-        timeHeader.textContent = timeSlot;
-        timeContainer.appendChild(timeHeader);
-        
-        // Контейнер для аудиторий
-        const auditoriesContainer = document.createElement('div');
-        auditoriesContainer.className = 'mobile-auditories-container';
-        
-        // Собираем аудитории с занятиями в этом временном интервале
-        const auditoriesWithLessons = results.filter(result => {
-            return result.schedule[timeSlot] && result.schedule[timeSlot].length > 0;
-        });
-        
-        if (auditoriesWithLessons.length > 0) {
-            auditoriesWithLessons.forEach(result => {
-                const auditoryCard = document.createElement('div');
-                auditoryCard.className = 'mobile-auditory-card';
+            // Для каждого временного интервала
+            timeSlotsOrder.forEach((timeSlot, timeIndex) => {
+                const timeContainer = document.createElement('div');
+                timeContainer.className = 'mobile-time-container';
                 
-                // Название аудитории
-                const auditoryName = document.createElement('div');
-                auditoryName.className = 'mobile-auditory-name';
-                auditoryName.textContent = result.auditory;
-                auditoryCard.appendChild(auditoryName);
+                // Подсвечиваем текущий временной интервал
+                if (isToday && timeIndex === currentSlotIndex) {
+                    timeContainer.classList.add('current-time-slot-mobile');
+                }
                 
-                // Занятия в этой аудитории
-                result.schedule[timeSlot].forEach(lesson => {
-                    const lessonDiv = document.createElement('div');
-                    lessonDiv.className = 'mobile-lesson';
-                    
-                    const typeClass = getLessonTypeClass(lesson.type);
-                    const startTime = lesson.startTime.substring(0, 5);
-                    const endTime = lesson.endTime.substring(0, 5);
-                    const groupsText = lesson.groups.length > 0 
-                        ? lesson.groups.map(g => 
-                            `<a href="https://iis.bsuir.by/schedule/${g}" target="_blank" class="mobile-group-link">${g}</a>`
-                          ).join(', ')
-                        : '';
-                    
-                    lessonDiv.innerHTML = `
-                        <div class="mobile-lesson-time">${startTime}—${endTime}</div>
-                        <div class="mobile-lesson-subject">${lesson.subject}</div>
-                        <div class="mobile-lesson-type ${typeClass}">${lesson.type}</div>
-                        ${groupsText ? `<div class="mobile-lesson-groups">${groupsText}</div>` : ''}
-                        <div class="mobile-lesson-teacher">${lesson.teacher}</div>
-                    `;
-                    auditoryCard.appendChild(lessonDiv);
+                // Заголовок времени
+                const timeHeader = document.createElement('div');
+                timeHeader.className = 'time-cell';
+                timeHeader.textContent = timeSlot;
+                timeContainer.appendChild(timeHeader);
+                
+                // Контейнер для аудиторий
+                const auditoriesContainer = document.createElement('div');
+                auditoriesContainer.className = 'mobile-auditories-container';
+                
+                // Собираем аудитории с занятиями в этом временном интервале
+                const auditoriesWithLessons = results.filter(result => {
+                    return result.schedule[timeSlot] && result.schedule[timeSlot].length > 0;
                 });
                 
-                auditoriesContainer.appendChild(auditoryCard);
+                if (auditoriesWithLessons.length > 0) {
+                    auditoriesWithLessons.forEach(result => {
+                        const auditoryCard = document.createElement('div');
+                        auditoryCard.className = 'mobile-auditory-card';
+                        
+                        // Название аудитории
+                        const auditoryName = document.createElement('div');
+                        auditoryName.className = 'mobile-auditory-name';
+                        auditoryName.textContent = result.auditory;
+                        auditoryCard.appendChild(auditoryName);
+                        
+                        // Занятия в этой аудитории
+                        result.schedule[timeSlot].forEach(lesson => {
+                            const lessonDiv = document.createElement('div');
+                            lessonDiv.className = 'mobile-lesson';
+                            
+                            const typeClass = getLessonTypeClass(lesson.type);
+                            const startTime = lesson.startTime.substring(0, 5);
+                            const endTime = lesson.endTime.substring(0, 5);
+                            const groupsText = lesson.groups.length > 0 
+                                ? lesson.groups.map(g => 
+                                    `<a href="https://iis.bsuir.by/schedule/${g}" target="_blank" class="mobile-group-link">${g}</a>`
+                                  ).join(', ')
+                                : '';
+                            
+                            lessonDiv.innerHTML = `
+                                <div class="mobile-lesson-time">${startTime}—${endTime}</div>
+                                <div class="mobile-lesson-subject">${lesson.subject}</div>
+                                <div class="mobile-lesson-type ${typeClass}">${lesson.type}</div>
+                                ${groupsText ? `<div class="mobile-lesson-groups">${groupsText}</div>` : ''}
+                                <div class="mobile-lesson-teacher">${lesson.teacher}</div>
+                            `;
+                            auditoryCard.appendChild(lessonDiv);
+                        });
+                        
+                        auditoriesContainer.appendChild(auditoryCard);
+                    });
+                } else {
+                    const noLessons = document.createElement('div');
+                    noLessons.className = 'mobile-auditory-card';
+                    noLessons.textContent = 'Занятий нет';
+                    auditoriesContainer.appendChild(noLessons);
+                }
+                
+                timeContainer.appendChild(auditoriesContainer);
+                mobileContainer.appendChild(timeContainer);
             });
-        } else {
-            const noLessons = document.createElement('div');
-            noLessons.className = 'mobile-auditory-card';
-            noLessons.textContent = 'Занятий нет';
-            auditoriesContainer.appendChild(noLessons);
-        }
-        
-        timeContainer.appendChild(auditoriesContainer);
-        mobileContainer.appendChild(timeContainer);
-    });
-    
-    // Прячем основную таблицу и показываем мобильную версию
-    document.getElementById('schedules-container').style.display = 'none';
-    document.getElementById('schedules-container').parentNode.insertBefore(mobileContainer, document.getElementById('schedules-container').nextSibling);
-
-    // Прокручиваем к текущему временному интервалу, если он есть
-    if (isToday && currentSlotIndex !== -1) {
-        const currentTimeContainers = mobileContainer.querySelectorAll('.mobile-time-container');
-        if (currentTimeContainers.length > currentSlotIndex) {
-            const currentContainer = currentTimeContainers[currentSlotIndex];
-            currentContainer.id = 'current-time-slot-anchor';
-            currentContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             
-            // Если URL уже содержит якорь, обновляем его
-            if (window.location.hash === '#current-time-slot-anchor') {
-                window.location.hash = '';
-                setTimeout(() => {
-                    window.location.hash = '#current-time-slot-anchor';
-                }, 10);
-            }
+            // Прячем основную таблицу и показываем мобильную версию
+            document.getElementById('schedules-container').style.display = 'none';
+            document.getElementById('schedules-container').parentNode.insertBefore(mobileContainer, document.getElementById('schedules-container').nextSibling);
         }
-    }
-}
 
-        function copyAndSend() {
-            const weekDisplayText = document.getElementById('weekDisplay').innerText;
-            const schedulesText = document.getElementById('schedules').innerText;
-            const textToCopy = `${weekDisplayText}\n\n${schedulesText}`;
-            
-            navigator.clipboard.writeText(textToCopy).then(() => {
-                alert('Текст скопирован!');
-                const telegramLink = `tg://msg?text=${encodeURIComponent(textToCopy)}`;
-                window.open(telegramLink, '_blank');
-            }).catch(err => {
-                console.error('Ошибка при копировании текста: ', err);
-                alert('Не удалось скопировать текст');
-            });
-        }
 
         // Обработчик изменения размера окна
         window.addEventListener('resize', function() {
@@ -493,7 +461,7 @@ const dayNames = ["Воскресенье", "Понедельник", "Втор�
                 
                 const weekNumber = calculateWeekNumber(selectedDate);
                 const dayName = dayNames[selectedDate.getDay()]; 
-                document.getElementById('weekDisplay').textContent = `${selectedDate.toLocaleDateString()} (${dayName}), ${weekNumber}-я учебная неделя 🗓️`;
+                document.getElementById('weekDisplay').textContent = `${selectedDate.toLocaleDateString()} (${dayName}), ${weekNumber}-я учебная неделя`;
                 
                 await updateSchedule(selectedDate, weekNumber);
             });
