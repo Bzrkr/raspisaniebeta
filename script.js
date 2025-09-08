@@ -1,22 +1,30 @@
-const dayNames = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
+
+        const dayNames = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
         const IPEauditories = ["502-2 к.", "601-2 к.", "603-2 к.", "604-2 к.", "605-2 к.", "607-2 к.", "611-2 к.", "613-2 к.", "615-2 к."];
+        const additionalAuditories = ["602-2 к."];
 
         // Порядок временных интервалов для сортировки
         const timeSlotsOrder = [
-            "09:00—10:20",
-            "10:35—11:55",
-            "12:25—13:45",
-            "14:00—15:20",
-            "15:50—17:10",
-            "17:25—18:45",
-            "19:00—20:20",
-            "20:40—22:00"
+            "08:30—09:55",
+            "10:05—11:30 ",
+            "12:00—13:25",
+            "13:35—15:00",
+            "15:30—16:55",
+            "17:05—18:30",
+            "19:00—20:25",
+            "20:35—22:00"
         ];
 
         // Глобальные переменные для хранения данных
         let currentWeekNumber = null;
         let teachersData = null;
         let teacherSchedulesData = null;
+
+        // Функция для получения списка аудиторий с учетом чекбокса
+        function getAuditoriesToShow() {
+            const show602 = document.getElementById('show602Checkbox').checked;
+            return show602 ? [...IPEauditories, ...additionalAuditories] : IPEauditories;
+        }
 
         async function fetchJson(url) {
             const response = await fetch(url);
@@ -29,30 +37,39 @@ const dayNames = ["Воскресенье", "Понедельник", "Втор�
         async function loadInitialData() {
             document.getElementById('loading').style.display = 'flex';
             try {
-                // Загружаем текущую неделю
-                currentWeekNumber = await fetchJson('https://iis.bsuir.by/api/v1/schedule/current-week');
-                
-                // Загружаем данные преподавателей
-                const teachers = await fetchJson('https://iis.bsuir.by/api/v1/employees/all');
-                teachersData = teachers;
-                
-                // Загружаем расписания преподавателей
-                teacherSchedulesData = {};
-                const promises = teachers.map(async (teacher) => {
-                    try {
-                        const schedule = await fetchJson(`https://iis.bsuir.by/api/v1/employees/schedule/${teacher.urlId}`);
-                        teacherSchedulesData[teacher.urlId] = schedule;
-                    } catch (error) {
-                        console.error(`Ошибка загрузки расписания для ${teacher.fio}:`, error);
-                        teacherSchedulesData[teacher.urlId] = { schedules: {}, previousSchedules: {} };
-                    }
-                });
+        // Обновляем текст загрузки
+        document.querySelector('#loading span').textContent = 'Загрузка текущей недели...';
+        
+        // Загружаем текущую неделю
+        currentWeekNumber = await fetchJson('https://iis.bsuir.by/api/v1/schedule/current-week');
+        
+        // Обновляем текст загрузки
+        document.querySelector('#loading span').textContent = 'Загрузка данных преподавателей...';
+        
+        // Загружаем данные преподавателей
+        const teachers = await fetchJson('https://iis.bsuir.by/api/v1/employees/all');
+        teachersData = teachers;
+        
+        // Обновляем текст загрузки
+        document.querySelector('#loading span').textContent = 'Загрузка расписаний преподавателей...';
+        
+        // Загружаем расписания преподавателей
+        teacherSchedulesData = {};
+        const promises = teachers.map(async (teacher) => {
+            try {
+                const schedule = await fetchJson(`https://iis.bsuir.by/api/v1/employees/schedule/${teacher.urlId}`);
+                teacherSchedulesData[teacher.urlId] = schedule;
+            } catch (error) {
+                console.error(`Ошибка загрузки расписания для ${teacher.fio}:`, error);
+                teacherSchedulesData[teacher.urlId] = { schedules: {}, previousSchedules: {} };
+            }
+        });
                 
                 await Promise.all(promises);
                 
                 // Устанавливаем текущую дату
                 const today = new Date();
-                today.setHours(0, 0, 0, 0);
+                //today.setHours(0, 0, 0, 0);
                 const yyyy = today.getFullYear();
                 const mm = String(today.getMonth() + 1).padStart(2, '0');
                 const dd = String(today.getDate()).padStart(2, '0');
@@ -61,7 +78,8 @@ const dayNames = ["Воскресенье", "Понедельник", "Втор�
                 // Обновляем отображение недели
                 const dayName = dayNames[today.getDay()]; 
                 document.getElementById('weekDisplay').textContent = `${today.toLocaleDateString()} (${dayName}), ${currentWeekNumber}-я учебная неделя`;
-                
+                 // Обновляем текст загрузки
+        document.querySelector('#loading span').textContent = 'Формирование расписания...';
                 // Загружаем расписание для текущей даты
                 await updateSchedule(today, currentWeekNumber);
             } catch (error) {
@@ -76,7 +94,7 @@ const dayNames = ["Воскресенье", "Понедельник", "Втор�
             if (!currentWeekNumber) return null;
             
             const today = new Date();
-            today.setHours(0, 0, 0, 0);
+           // today.setHours(0, 0, 0, 0);
             
             // Находим понедельник текущей недели
             const getMonday = (date) => {
@@ -99,9 +117,20 @@ const dayNames = ["Воскресенье", "Понедельник", "Втор�
 
         function parseDate(dateStr) {
             if (!dateStr) return null;
-            const parts = dateStr.split('.');
-            return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
-        }
+    try {
+        const parts = dateStr.split('.');
+        if (parts.length !== 3) return null;
+        
+        const day = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1; // Месяцы 0-11
+        const year = parseInt(parts[2], 10);
+        
+        return new Date(year, month, day);
+    } catch (error) {
+        console.error('Ошибка парсинга даты:', dateStr, error);
+        return null;
+    }
+}
 
         function timeInRange(start, end, target) {
             return start <= target && target <= end;
@@ -172,14 +201,22 @@ const dayNames = ["Воскресенье", "Понедельник", "Втор�
                                         if (!schedule[timeSlot]) {
                                             schedule[timeSlot] = [];
                                         }
-                                        schedule[timeSlot].push({
-                                            subject: lesson.subject,
-                                            type: lesson.lessonTypeAbbrev,
-                                            teacher: teacher.fio,
-                                            groups: lesson.studentGroups?.map(g => g.name) || [],
-                                            startTime: lessonStartTime,
-                                            endTime: lessonEndTime
-                                        });
+                                       schedule[timeSlot].push({
+    subject: lesson.subject,
+    type: lesson.lessonTypeAbbrev,
+    teacher: teacher.fio,
+    groups: lesson.studentGroups?.map(g => g.name) || [],
+    startTime: lessonStartTime,
+    endTime: lessonEndTime,
+    note: lesson.note,
+    // Добавляем новые поля
+    dateLesson: lesson.dateLesson,
+    startLessonDate: lesson.startLessonDate,
+    endLessonDate: lesson.endLessonDate,
+    auditories: lesson.auditories,
+    weekNumber: lesson.weekNumber,
+    announcement: lesson.announcement
+});
                                     }
                                 }
                             }
@@ -210,7 +247,8 @@ const dayNames = ["Воскресенье", "Понедельник", "Втор�
                 schedulesContainer.appendChild(corner);
                 
                 // Добавляем заголовки аудиторий
-                IPEauditories.forEach((auditory, index) => {
+                const auditoriesToShow = getAuditoriesToShow();
+                auditoriesToShow.forEach((auditory, index) => {
                     const header = document.createElement('div');
                     header.className = 'header-cell auditory-header';
                     header.textContent = auditory;
@@ -219,7 +257,7 @@ const dayNames = ["Воскресенье", "Понедельник", "Втор�
                     schedulesContainer.appendChild(header);
                 });
                 
-                const promises = IPEauditories.map(async (auditory) => {
+                const promises = auditoriesToShow.map(async (auditory) => {
                     const schedule = await getScheduleForAuditory(auditory, date, weekNumber);
                     return { auditory, schedule };
                 });
@@ -302,12 +340,13 @@ const dayNames = ["Воскресенье", "Понедельник", "Втор�
                                     : '';
                                 
                                 lessonDiv.innerHTML = `
-                                    <div class="lesson-time">${startTime}—${endTime}</div>
-                                    <div class="lesson-subject">${lesson.subject}</div>
-                                    <div class="lesson-type">${lesson.type}</div>
-                                    ${groupsText ? `<div class="lesson-groups">${groupsText}</div>` : ''}
-                                    <div>${lesson.teacher}</div>
-                                `;
+    ${formatLessonInfo(lesson)}
+    <div class="lesson-subject">${lesson.subject || 'Не указано'}</div>
+    ${lesson.type ? `<div class="lesson-type">${lesson.type}</div>` : ''}
+    ${groupsText ? `<div class="lesson-groups">👥 ${groupsText}</div>` : ''}
+    <div class="lesson-teacher">👨‍🏫 ${lesson.teacher}</div>
+    ${lesson.note ? `<div class="lesson-note">💡 ${lesson.note}</div>` : ''}
+`;
                                 cell.appendChild(lessonDiv);
                             });
                         } else {
@@ -344,7 +383,38 @@ const dayNames = ["Воскресенье", "Понедельник", "Втор�
                 document.getElementById('loading').style.display = 'none';
             }
         }
-
+function formatLessonInfo(lesson) {
+    let info = '';
+    
+    // Дата занятия (если указана конкретная дата)
+    if (lesson.dateLesson) {
+        info += `<div class="lesson-date">📅 ${lesson.dateLesson}</div>`;
+    } else if (lesson.startLessonDate && lesson.endLessonDate) {
+        info += `<div class="lesson-date">📅 ${lesson.startLessonDate} - ${lesson.endLessonDate}</div>`;
+    }
+    
+    // Время занятия
+    const startTime = lesson.startTime.substring(0, 5);
+    const endTime = lesson.endTime.substring(0, 5);
+    info += `<div class="lesson-time">⏰ ${startTime}—${endTime}</div>`;
+    
+    // Аудитории
+    if (lesson.auditories && lesson.auditories.length > 0) {
+        info += `<div class="lesson-auditories">🚪 ${lesson.auditories.join(', ')}</div>`;
+    }
+    
+    // Недели
+    if (lesson.weekNumber && Array.isArray(lesson.weekNumber) && lesson.weekNumber.length > 0) {
+        info += `<div class="lesson-weeks">📋 Недели: ${lesson.weekNumber.join(', ')}</div>`;
+    }
+    
+    // Объявление (если это анонс)
+    if (lesson.announcement) {
+        info += `<div class="lesson-announcement">📢 Анонс</div>`;
+    }
+    
+    return info;
+}
         function createMobileVersion(results, date, weekNumber, isToday, currentSlotIndex) {
             // Удаляем предыдущую мобильную версию, если она есть
             const oldMobileContainer = document.getElementById('mobile-schedules');
@@ -413,12 +483,13 @@ const dayNames = ["Воскресенье", "Понедельник", "Втор�
                                 : '';
                             
                             lessonDiv.innerHTML = `
-                                <div class="mobile-lesson-time">${startTime}—${endTime}</div>
-                                <div class="mobile-lesson-subject">${lesson.subject}</div>
-                                <div class="mobile-lesson-type ${typeClass}">${lesson.type}</div>
-                                ${groupsText ? `<div class="mobile-lesson-groups">${groupsText}</div>` : ''}
-                                <div class="mobile-lesson-teacher">${lesson.teacher}</div>
-                            `;
+    ${formatLessonInfo(lesson).replace(/lesson-/g, 'mobile-lesson-')}
+    <div class="mobile-lesson-subject">${lesson.subject || 'Не указано'}</div>
+    ${lesson.type ? `<div class="mobile-lesson-type ${typeClass}">${lesson.type}</div>` : ''}
+    ${groupsText ? `<div class="mobile-lesson-groups">👥 ${groupsText}</div>` : ''}
+    <div class="mobile-lesson-teacher">👨‍🏫 ${lesson.teacher}</div>
+    ${lesson.note ? `<div class="mobile-lesson-note">💡 ${lesson.note}</div>` : ''}
+`;
                             auditoryCard.appendChild(lessonDiv);
                         });
                         
@@ -439,7 +510,6 @@ const dayNames = ["Воскресенье", "Понедельник", "Втор�
             document.getElementById('schedules-container').style.display = 'none';
             document.getElementById('schedules-container').parentNode.insertBefore(mobileContainer, document.getElementById('schedules-container').nextSibling);
         }
-
 
         // Обработчик изменения размера окна
         window.addEventListener('resize', function() {
@@ -465,4 +535,46 @@ const dayNames = ["Воскресенье", "Понедельник", "Втор�
                 
                 await updateSchedule(selectedDate, weekNumber);
             });
-        });
+            
+            // Обработчик изменения чекбокса
+            document.getElementById('show602Checkbox').addEventListener('change', async () => {
+                if (document.getElementById('datePicker') && document.getElementById('datePicker').value) {
+                    const selectedDate = new Date(document.getElementById('datePicker').value);
+                    const weekNumber = calculateWeekNumber(selectedDate);
+                    await updateSchedule(selectedDate, weekNumber);
+                }
+            });
+        // Обработчики для кнопок переключения дней
+document.getElementById('prevDayBtn').addEventListener('click', () => {
+    const datePicker = document.getElementById('datePicker');
+    const currentDate = new Date(datePicker.value);
+    currentDate.setDate(currentDate.getDate() - 1);
+    
+    // Форматируем дату обратно в формат YYYY-MM-DD
+    const yyyy = currentDate.getFullYear();
+    const mm = String(currentDate.getMonth() + 1).padStart(2, '0');
+    const dd = String(currentDate.getDate()).padStart(2, '0');
+    const newDateStr = `${yyyy}-${mm}-${dd}`;
+    
+    datePicker.value = newDateStr;
+    
+    // Триггерим событие change
+    datePicker.dispatchEvent(new Event('change'));
+});
+
+document.getElementById('nextDayBtn').addEventListener('click', () => {
+    const datePicker = document.getElementById('datePicker');
+    const currentDate = new Date(datePicker.value);
+    currentDate.setDate(currentDate.getDate() + 1);
+    
+    // Форматируем дату обратно в формат YYYY-MM-DD
+    const yyyy = currentDate.getFullYear();
+    const mm = String(currentDate.getMonth() + 1).padStart(2, '0');
+    const dd = String(currentDate.getDate()).padStart(2, '0');
+    const newDateStr = `${yyyy}-${mm}-${dd}`;
+    
+    datePicker.value = newDateStr;
+    
+    // Триггерим событие change
+    datePicker.dispatchEvent(new Event('change'));
+});});
