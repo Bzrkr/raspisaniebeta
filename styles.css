@@ -248,7 +248,7 @@ padding: 4px;
             font-weight: bold;
             font-size: 1.1em;
             background-color: #fff;
-            border-radius: 7px;
+            border-radius: 12px;
             padding: 5px;
             display: inline-block;
         }
@@ -295,10 +295,10 @@ padding: 4px;
         }
         
         .time-cell {
-            padding: 10px;
+            padding: 10px 10px 10px 0;
             background-color: #f5f5f5;
             font-weight: bold;
-            text-align: left;
+            text-align: center;
             position: sticky;
             left: 0;
             z-index: 1;
@@ -307,6 +307,7 @@ padding: 4px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
+            align-items: center;
         }
 
         .time-cell { position: sticky; }
@@ -447,7 +448,7 @@ padding: 4px;
             padding-top: 6px;
             border-top: 1px dashed #ddd;
             font-size: 0.85em;
-            color: #444;
+            color: #ff0000;
         }
         
         .group-link {
@@ -573,15 +574,7 @@ padding: 4px;
                 justify-content: center;
             }
 
-            /* Make weekDisplay look the same as desktop */
-            #weekDisplay {
-                font-weight: bold;
-            font-size: 1.1em;
-            background-color: #fff;
-            border-radius: 7px;
-            padding: 5px;
-            display: inline-block;
-            }
+            /* weekDisplay inherits desktop styles */
             
             .current-time-slot-mobile {
                 box-shadow: 0px 0px 2px 4px #00f7ff;
