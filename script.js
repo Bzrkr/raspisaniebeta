@@ -19,6 +19,7 @@
         let currentWeekNumber = null;
         let teachersData = null;
         let teacherSchedulesData = null;
+        let lastIsMobile = (typeof window !== 'undefined') ? window.innerWidth <= 768 : false;
 
         // Функция для получения списка аудиторий с учетом чекбокса
         function getAuditoriesToShow() {
@@ -304,11 +305,29 @@
                     timeHeader.className = 'time-cell';
                     {
                         const [tsStart, tsEnd] = timeSlot.split('—');
+                        const startStr = tsStart.trim();
+                        const endStr = tsEnd.trim();
+                        const startMin = convertToMinutes(startStr);
+                        const endMin = convertToMinutes(endStr);
+                        let topState = 'upcoming';
+                        let bottomState = 'upcoming';
+                        if (isToday) {
+                            if (currentMinutes < startMin) {
+                                topState = 'upcoming';
+                                bottomState = 'upcoming';
+                            } else if (currentMinutes >= startMin && currentMinutes < endMin) {
+                                topState = 'now';
+                                bottomState = 'ongoing-end';
+                            } else if (currentMinutes >= endMin) {
+                                topState = 'past';
+                                bottomState = 'past';
+                            }
+                        }
                         timeHeader.innerHTML = `
-                            <div class="time-start">${tsStart.trim()}</div>
-                            <div class="time-end">${tsEnd.trim()}</div>
-                            <span class="time-dot time-dot-top"></span>
-                            <span class="time-dot time-dot-bottom"></span>
+                            <div class=\"time-start\">${startStr}</div>
+                            <div class=\"time-end\">${endStr}</div>
+                            <span class=\"time-dot time-dot-top ${topState}\"></span>
+                            <span class=\"time-dot time-dot-bottom ${bottomState}\"></span>
                         `;
                     }
                     timeHeader.style.gridColumn = '1';
@@ -470,9 +489,8 @@
                         // Занятия в этой аудитории
                         result.schedule[timeSlot].forEach(lesson => {
                             const lessonDiv = document.createElement('div');
-                            lessonDiv.className = 'mobile-lesson';
-                            
                             const typeClass = getLessonTypeClass(lesson.type);
+                            lessonDiv.className = `mobile-lesson ${typeClass}`;
                             const startTime = lesson.startTime.substring(0, 5);
                             const endTime = lesson.endTime.substring(0, 5);
                             const groupsText = lesson.groups.length > 0 
@@ -530,8 +548,11 @@
             document.getElementById('schedules-container').parentNode.insertBefore(mobileContainer, document.getElementById('schedules-container').nextSibling);
         }
 
-        // Обработчик изменения размера окна
+        // Обработчик изменения размера окна — перерисовываем ТОЛЬКО при смене брейкпоинта (mobile/desktop)
         window.addEventListener('resize', function() {
+            const nowIsMobile = window.innerWidth <= 768;
+            if (nowIsMobile === lastIsMobile) return;
+            lastIsMobile = nowIsMobile;
             if (document.getElementById('datePicker') && document.getElementById('datePicker').value) {
                 const selectedDate = new Date(document.getElementById('datePicker').value);
                 const weekNumber = calculateWeekNumber(selectedDate);
