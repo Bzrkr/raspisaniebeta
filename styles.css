@@ -247,7 +247,7 @@ padding: 4px;
         #weekDisplay {
             font-weight: bold;
             font-size: 1.1em;
-            background-color: #fff;
+            background-color: #ebebebec;
             border-radius: 12px;
             padding: 5px;
             display: inline-block;
@@ -448,7 +448,7 @@ padding: 4px;
             padding-top: 6px;
             border-top: 1px dashed #ddd;
             font-size: 0.85em;
-            color: #ff0000;
+            color: #444;
         }
         
         .group-link {
