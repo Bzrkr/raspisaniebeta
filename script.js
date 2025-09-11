@@ -448,6 +448,7 @@
             // Создаем контейнер для мобильной версии
             const mobileContainer = document.createElement('div');
             mobileContainer.id = 'mobile-schedules';
+            const rootFragment = document.createDocumentFragment();
 
             // Предрасчет первых и последних появлений аудитории за день (по всем слотам)
             const auditoryAppearanceMap = new Map(); // auditory -> { firstIndex, lastIndex }
@@ -486,6 +487,7 @@
                 // Контейнер для аудиторий
                 const auditoriesContainer = document.createElement('div');
                 auditoriesContainer.className = 'mobile-auditories-container';
+                const audFrag = document.createDocumentFragment();
                 
                 // Собираем аудитории с занятиями в этом временном интервале
                 const auditoriesWithLessons = results.filter(result => {
@@ -561,18 +563,21 @@
                             auditoryCard.appendChild(lessonDiv);
                         });
                         
-                        auditoriesContainer.appendChild(auditoryCard);
+                        audFrag.appendChild(auditoryCard);
                     });
+                    auditoriesContainer.appendChild(audFrag);
                 } else {
                     const noLessons = document.createElement('div');
                     noLessons.className = 'mobile-auditory-card';
                     noLessons.textContent = 'Занятий нет';
-                    auditoriesContainer.appendChild(noLessons);
+                    audFrag.appendChild(noLessons);
+                    auditoriesContainer.appendChild(audFrag);
                 }
                 
                 timeContainer.appendChild(auditoriesContainer);
-                mobileContainer.appendChild(timeContainer);
+                rootFragment.appendChild(timeContainer);
             });
+            mobileContainer.appendChild(rootFragment);
             
             // Прячем основную таблицу и показываем мобильную версию
             document.getElementById('schedules-container').style.display = 'none';
