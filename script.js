@@ -449,6 +449,23 @@
             const mobileContainer = document.createElement('div');
             mobileContainer.id = 'mobile-schedules';
 
+            // Предрасчет первых и последних появлений аудитории за день (по всем слотам)
+            const auditoryAppearanceMap = new Map(); // auditory -> { firstIndex, lastIndex }
+            results.forEach(r => {
+                let firstIndex = null;
+                let lastIndex = null;
+                timeSlotsOrder.forEach((slot, idx) => {
+                    const hasLessons = r.schedule[slot] && r.schedule[slot].length > 0;
+                    if (hasLessons) {
+                        if (firstIndex === null) firstIndex = idx;
+                        lastIndex = idx;
+                    }
+                });
+                if (firstIndex !== null) {
+                    auditoryAppearanceMap.set(r.auditory, { firstIndex, lastIndex });
+                }
+            });
+
             // Для каждого временного интервала
             timeSlotsOrder.forEach((timeSlot, timeIndex) => {
                 const timeContainer = document.createElement('div');
@@ -483,7 +500,21 @@
                         // Название аудитории
                         const auditoryName = document.createElement('div');
                         auditoryName.className = 'mobile-auditory-name';
-                        auditoryName.textContent = result.auditory;
+                        let emoji = '';
+                        const appearance = auditoryAppearanceMap.get(result.auditory);
+                        if (appearance) {
+                            if (timeIndex === appearance.firstIndex) {
+                                // Первая пара в этой аудитории за день — закрыто (нужно открыть)
+                                emoji = ' 🔐';
+                            } else if (timeIndex < appearance.lastIndex) {
+                                // Продолжаются занятия позже — открыто
+                                emoji = ' 🔓';
+                            } else if (timeIndex === appearance.lastIndex) {
+                                // Последняя пара в этой аудитории за день — закрыть по завершению
+                                emoji = ' 🔑';
+                            }
+                        }
+                        auditoryName.textContent = result.auditory + emoji;
                         auditoryCard.appendChild(auditoryName);
                         
                         // Занятия в этой аудитории
