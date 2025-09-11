@@ -201,22 +201,23 @@
                                         if (!schedule[timeSlot]) {
                                             schedule[timeSlot] = [];
                                         }
-                                       schedule[timeSlot].push({
-    subject: lesson.subject,
-    type: lesson.lessonTypeAbbrev,
-    teacher: teacher.fio,
-    groups: lesson.studentGroups?.map(g => g.name) || [],
-    startTime: lessonStartTime,
-    endTime: lessonEndTime,
-    note: lesson.note,
-    // Добавляем новые поля
-    dateLesson: lesson.dateLesson,
-    startLessonDate: lesson.startLessonDate,
-    endLessonDate: lesson.endLessonDate,
-    auditories: lesson.auditories,
-    weekNumber: lesson.weekNumber,
-    announcement: lesson.announcement
-});
+                                        const subjectDisplay = (lesson.subject && lesson.subject.trim())
+                                            ? lesson.subject
+                                            : ((lesson.note && lesson.note.trim()) ? 'ОБЪЯВЛЕНИЕ' : '');
+                                        schedule[timeSlot].push({
+                                            subject: subjectDisplay,
+                                            type: lesson.lessonTypeAbbrev,
+                                            note: lesson.note || null,
+                                            startDate: lesson.startLessonDate || null,
+                                            endDate: lesson.endLessonDate || null,
+                                            dateLesson: lesson.dateLesson || null,
+                                            weeks: Array.isArray(weekNumbers) ? weekNumbers : [],
+                                            teacher: teacher.fio,
+                                            teacherUrlId: teacher.urlId,
+                                            groups: lesson.studentGroups?.map(g => g.name) || [],
+                                            startTime: lessonStartTime,
+                                            endTime: lessonEndTime
+                                        });
                                     }
                                 }
                             }
@@ -301,7 +302,15 @@
                     // Заголовок временного интервала
                     const timeHeader = document.createElement('div');
                     timeHeader.className = 'time-cell';
-                    timeHeader.textContent = timeSlot;
+                    {
+                        const [tsStart, tsEnd] = timeSlot.split('—');
+                        timeHeader.innerHTML = `
+                            <div class="time-start">${tsStart.trim()}</div>
+                            <div class="time-end">${tsEnd.trim()}</div>
+                            <span class="time-dot time-dot-top"></span>
+                            <span class="time-dot time-dot-bottom"></span>
+                        `;
+                    }
                     timeHeader.style.gridColumn = '1';
                     timeHeader.style.gridRow = timeIndex + 2;
                     
@@ -339,14 +348,34 @@
                                       ).join(', ')
                                     : '';
                                 
+                                const periodHtml = (lesson.dateLesson && lesson.dateLesson.trim())
+                                    ? `<div class=\"lesson-period\">Дата: ${lesson.dateLesson}</div>`
+                                    : ((lesson.startDate || lesson.endDate)
+                                        ? `<div class=\"lesson-period\">Период: с ${lesson.startDate || ''}${(lesson.startDate && lesson.endDate) ? ' по ' : ''}${lesson.endDate || ''}</div>`
+                                        : '');
+                                const weeksHtml = (lesson.weeks && lesson.weeks.length > 0)
+                                    ? `<div class=\"lesson-weeks\">Недели: ${lesson.weeks.join(', ')}</div>`
+                                    : '';
+                                const teacherUrl = lesson.teacherUrlId
+                                    ? `https://iis.bsuir.by/schedule/${encodeURIComponent(lesson.teacherUrlId)}`
+                                    : `https://iis.bsuir.by/schedule/`;
                                 lessonDiv.innerHTML = `
-    ${formatLessonInfo(lesson)}
-    <div class="lesson-subject">${lesson.subject || 'Не указано'}</div>
-    ${lesson.type ? `<div class="lesson-type">${lesson.type}</div>` : ''}
-    ${groupsText ? `<div class="lesson-groups">👥 ${groupsText}</div>` : ''}
-    <div class="lesson-teacher">👨‍🏫 ${lesson.teacher}</div>
-    ${lesson.note ? `<div class="lesson-note">💡 ${lesson.note}</div>` : ''}
-`;
+                                    <div class="lesson-time">${startTime}—${endTime}</div>
+                                    ${(periodHtml || weeksHtml) ? `<div class=\"lesson-meta\">${periodHtml}${weeksHtml}</div>` : ''}
+                                    <div class="lesson-subject">${lesson.subject}${lesson.type ? ` <span class=\"lesson-type-inline\">(${lesson.type})</span>` : ''}</div>
+                                    ${groupsText ? `<div class="lesson-groups">${groupsText}</div>` : ''}
+                                    <div><a href="${teacherUrl}" target="_blank" rel="noopener" class="teacher-link">${lesson.teacher}</a></div>
+                                    ${lesson.note ? `<div class="lesson-note">${lesson.note}</div>` : ''}
+                                `;
+                                // Toggle meta visibility on time click
+                                const desktopMetaEl = lessonDiv.querySelector('.lesson-meta');
+                                const desktopTimeEl = lessonDiv.querySelector('.lesson-time');
+                                if (desktopMetaEl && desktopTimeEl) {
+                                    desktopMetaEl.style.display = 'none';
+                                    desktopTimeEl.addEventListener('click', () => {
+                                        desktopMetaEl.style.display = (desktopMetaEl.style.display === 'none') ? 'block' : 'none';
+                                    });
+                                }
                                 cell.appendChild(lessonDiv);
                             });
                         } else {
@@ -383,38 +412,7 @@
                 document.getElementById('loading').style.display = 'none';
             }
         }
-function formatLessonInfo(lesson) {
-    let info = '';
-    
-    // Дата занятия (если указана конкретная дата)
-    if (lesson.dateLesson) {
-        info += `<div class="lesson-date">📅 ${lesson.dateLesson}</div>`;
-    } else if (lesson.startLessonDate && lesson.endLessonDate) {
-        info += `<div class="lesson-date">📅 ${lesson.startLessonDate} - ${lesson.endLessonDate}</div>`;
-    }
-    
-    // Время занятия
-    const startTime = lesson.startTime.substring(0, 5);
-    const endTime = lesson.endTime.substring(0, 5);
-    info += `<div class="lesson-time">⏰ ${startTime}—${endTime}</div>`;
-    
-    // Аудитории
-    if (lesson.auditories && lesson.auditories.length > 0) {
-        info += `<div class="lesson-auditories">🚪 ${lesson.auditories.join(', ')}</div>`;
-    }
-    
-    // Недели
-    if (lesson.weekNumber && Array.isArray(lesson.weekNumber) && lesson.weekNumber.length > 0) {
-        info += `<div class="lesson-weeks">📋 Недели: ${lesson.weekNumber.join(', ')}</div>`;
-    }
-    
-    // Объявление (если это анонс)
-    if (lesson.announcement) {
-        info += `<div class="lesson-announcement">📢 Анонс</div>`;
-    }
-    
-    return info;
-}
+
         function createMobileVersion(results, date, weekNumber, isToday, currentSlotIndex) {
             // Удаляем предыдущую мобильную версию, если она есть
             const oldMobileContainer = document.getElementById('mobile-schedules');
@@ -445,7 +443,8 @@ function formatLessonInfo(lesson) {
                 // Заголовок времени
                 const timeHeader = document.createElement('div');
                 timeHeader.className = 'time-cell';
-                timeHeader.textContent = timeSlot;
+                const displayTime = timeSlot.replace('—', ' - ');
+                timeHeader.textContent = displayTime;
                 timeContainer.appendChild(timeHeader);
                 
                 // Контейнер для аудиторий
@@ -482,14 +481,34 @@ function formatLessonInfo(lesson) {
                                   ).join(', ')
                                 : '';
                             
+                            const periodHtml = (lesson.dateLesson && lesson.dateLesson.trim())
+                                ? `<div class=\"mobile-lesson-period\">Дата: ${lesson.dateLesson}</div>`
+                                : ((lesson.startDate || lesson.endDate)
+                                    ? `<div class=\"mobile-lesson-period\">Период: с ${lesson.startDate || ''}${(lesson.startDate && lesson.endDate) ? ' по ' : ''}${lesson.endDate || ''}</div>`
+                                    : '');
+                            const weeksHtml = (lesson.weeks && lesson.weeks.length > 0)
+                                ? `<div class=\"mobile-lesson-weeks\">Недели: ${lesson.weeks.join(', ')}</div>`
+                                : '';
+                            const teacherUrl = lesson.teacherUrlId
+                                ? `https://iis.bsuir.by/schedule/${encodeURIComponent(lesson.teacherUrlId)}`
+                                : `https://iis.bsuir.by/schedule/`;
                             lessonDiv.innerHTML = `
-    ${formatLessonInfo(lesson).replace(/lesson-/g, 'mobile-lesson-')}
-    <div class="mobile-lesson-subject">${lesson.subject || 'Не указано'}</div>
-    ${lesson.type ? `<div class="mobile-lesson-type ${typeClass}">${lesson.type}</div>` : ''}
-    ${groupsText ? `<div class="mobile-lesson-groups">👥 ${groupsText}</div>` : ''}
-    <div class="mobile-lesson-teacher">👨‍🏫 ${lesson.teacher}</div>
-    ${lesson.note ? `<div class="mobile-lesson-note">💡 ${lesson.note}</div>` : ''}
-`;
+                                <div class="mobile-lesson-time">${startTime}—${endTime}</div>
+                                ${(periodHtml || weeksHtml) ? `<div class=\"mobile-lesson-meta\">${periodHtml}${weeksHtml}</div>` : ''}
+                                <div class="mobile-lesson-subject">${lesson.subject}${lesson.type ? ` <span class=\"lesson-type-inline\">(${lesson.type})</span>` : ''}</div>
+                                ${groupsText ? `<div class="mobile-lesson-groups">${groupsText}</div>` : ''}
+                                <div class="mobile-lesson-teacher"><a href="${teacherUrl}" target="_blank" rel="noopener" class="teacher-link">${lesson.teacher}</a></div>
+                                ${lesson.note ? `<div class="mobile-lesson-note">${lesson.note}</div>` : ''}
+                            `;
+                            // Toggle meta visibility on time click (mobile)
+                            const mobileMetaEl = lessonDiv.querySelector('.mobile-lesson-meta');
+                            const mobileTimeEl = lessonDiv.querySelector('.mobile-lesson-time');
+                            if (mobileMetaEl && mobileTimeEl) {
+                                mobileMetaEl.style.display = 'none';
+                                mobileTimeEl.addEventListener('click', () => {
+                                    mobileMetaEl.style.display = (mobileMetaEl.style.display === 'none') ? 'block' : 'none';
+                                });
+                            }
                             auditoryCard.appendChild(lessonDiv);
                         });
                         
