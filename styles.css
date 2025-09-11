@@ -44,8 +44,7 @@ body {
 
 .loader:after {
     --r: 6deg;
-    right: 4px;
-}
+    right: 4px;}
 
 .loader div {
     width: 100%;
@@ -55,15 +54,13 @@ body {
     z-index: 1;
     perspective: 600px;
     box-shadow: 0 4px 6px var(--shadow);
-    background-image: var(--background);
-}
+    background-image: var(--background);}
 
 .loader div ul {
     margin: 0;
     padding: 0;
     list-style: none;
-    position: relative;
-}
+    position: relative;}
 
 .loader div ul li {
     --r: 180deg;
@@ -76,34 +73,28 @@ body {
     color: var(--c);
     opacity: var(--o);
     transform: rotateY(var(--r));
-    animation: var(--duration) ease infinite;
-}
+    animation: var(--duration) ease infinite;}
 
 .loader div ul li:nth-child(2) {
     --c: var(--page-fold);
-    animation-name: page-2;
-}
+    animation-name: page-2;}
 
 .loader div ul li:nth-child(3) {
     --c: var(--page-fold);
-    animation-name: page-3;
-}
+    animation-name: page-3;}
 
 .loader div ul li:nth-child(4) {
     --c: var(--page-fold);
-    animation-name: page-4;
-}
+    animation-name: page-4;}
 
 .loader div ul li:nth-child(5) {
     --c: var(--page-fold);
-    animation-name: page-5;
-}
+    animation-name: page-5;}
 
 .loader div ul li svg {
     width: 90px;
     height: 120px;
-    display: block;
-}
+    display: block;}
 
 .loader div ul li:first-child {
     --r: 0deg;
@@ -111,8 +102,7 @@ body {
 }
 
 .loader div ul li:last-child {
-    --o: 1;
-}
+    --o: 1;}
 
 .loader span {
     display: block;
@@ -121,8 +111,7 @@ body {
     top: 100%;
     margin-top: 20px;
     text-align: center;
-    color: var(--text);
-}
+    color: var(--text);}
 
 @keyframes page-2 {
     0% {
@@ -136,9 +125,7 @@ body {
         opacity: 0;
     }
     50%, 100% {
-        transform: rotateY(0deg);
-    }
-}
+        transform: rotateY(0deg);}}
 
 @keyframes page-3 {
     15% {
@@ -152,9 +139,7 @@ body {
         opacity: 0;
     }
     65%, 100% {
-        transform: rotateY(0deg);
-    }
-}
+        transform: rotateY(0deg);}}
 
 @keyframes page-4 {
     30% {
@@ -168,9 +153,7 @@ body {
         opacity: 0;
     }
     80%, 100% {
-        transform: rotateY(0deg);
-    }
-}
+        transform: rotateY(0deg);}}
 
 @keyframes page-5 {
     45% {
@@ -184,29 +167,24 @@ body {
         opacity: 0;
     }
     95%, 100% {
-        transform: rotateY(0deg);
-    }
-}
+        transform: rotateY(0deg);}}
+
 ::-webkit-scrollbar {
   width: 15px; /* ширина скроллбара */
-  height: 15px; /* высота горизонтального скроллбара */
-}
+  height: 15px; /* высота горизонтального скроллбара */}
 
 ::-webkit-scrollbar-track {
   background: #d3d3d3; /* фон дорожки */
-  border-radius: 10px; /* скругление дорожки */
- 
-}
+  border-radius: 10px; /* скругление дорожки */}
 
 ::-webkit-scrollbar-thumb {
   background: #9c9c9c; /* цвет бегунка */
   border-radius: 10px; /* скругление бегунка */
-  border: 2px solid #d3d3d3; /* отступ вокруг бегунка */
-}
+  border: 2px solid #d3d3d3; /* отступ вокруг бегунка */}
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #555; /* цвет бегунка при наведении */
-}        
+  background: #555; /* цвет бегунка при наведении */}        
+
         .current-time-slot {
             background-color: #d6e6f1 !important;
              box-shadow:  0px 0px 0px 4px #00f7ff inset;
@@ -295,8 +273,7 @@ padding: 4px;
         .header-cell { /* ячейки кабинетов*/
             padding: 10px;
             background-color: #b9c6d7;
-            box-shadow: 
-               -20px -20px 60px #ffffff;
+            
             font-weight: bold;
             text-align: center;
             position: sticky;
@@ -319,13 +296,75 @@ padding: 4px;
             padding: 10px;
             background-color: #f5f5f5;
             font-weight: bold;
-            text-align: center;
+            text-align: left;
             position: sticky;
             left: 0;
             z-index: 1;
             border-top: 1px solid #e2e1e1;
             border-bottom: 1px solid #e2e1e1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
         }
+
+        .time-cell { position: sticky; }
+        .time-cell { position: sticky; }
+
+        .time-cell {
+            position: sticky;
+        }
+
+        .time-cell {
+            position: sticky;
+        }
+
+        .time-cell {
+            position: sticky;
+        }
+
+        .time-cell {
+            position: sticky;
+        }
+
+        .time-cell {
+            position: sticky;
+        }
+
+        .time-cell {
+            position: sticky;
+        }
+
+        .time-cell .time-start,
+        .time-cell .time-end {
+            font-weight: 700;
+            color: #1c375c;
+            line-height: 1.2;
+        }
+
+        .time-cell .time-end { margin-top: 0; }
+
+        .time-cell::before {
+            content: "";
+            position: absolute;
+            right: 8px;
+            top: 6px;
+            bottom: 6px;
+            width: 2px;
+            background: linear-gradient(#c7d4e6, #c7d4e6) no-repeat center/2px 100%;
+        }
+
+        .time-dot {
+            position: absolute;
+            right: 3px;
+            width: 10px;
+            height: 10px;
+            background: #e9edf3;
+            border: 2px solid #bfc7d6;
+            border-radius: 50%;
+        }
+
+        .time-dot-top { top: 8px; }
+        .time-dot-bottom { bottom: 8px; }
         
         .auditory-cell {
             padding: 5px;
@@ -351,7 +390,7 @@ padding: 4px;
             display: flex;
             align-items: center;
             justify-content: center;
-            min-height: 100px;
+            min-height: 79px;
             border: 1px dashed #cac6c6;
             border-radius: 15px;
         }
@@ -359,6 +398,7 @@ padding: 4px;
         .lesson-time {
             font-weight: bold;
             margin-bottom: 3px;
+            cursor: pointer;
         }
         
         .lesson-subject {
@@ -366,9 +406,31 @@ padding: 4px;
             margin-bottom: 3px;
         }
         
+        .lesson-type-inline {
+            font-weight: normal;
+            font-style: normal;
+        }
+        
         .lesson-type {
             display: inline-block;
             margin-right: 5px;
+        }
+        
+        
+        .lesson-meta {
+            margin-top: 4px;
+            font-size: 0.85em;
+            color: #555;
+        }
+
+        
+
+        .lesson-note {
+            margin-top: 6px;
+            padding-top: 6px;
+            border-top: 1px dashed #ddd;
+            font-size: 0.85em;
+            color: #444;
         }
         
         .group-link {
@@ -384,8 +446,20 @@ padding: 4px;
             box-shadow: 0 1px 2px rgba(0,0,0,0.1);
         }
 
+        .teacher-link {
+            color: #024f97;
+            text-decoration: none;
+        }
+
+        .teacher-link:hover {
+            text-decoration: none;
+            color: #013c74;
+            background-color: rgba(2, 79, 151, 0.1);
+            border-radius: 4px;
+        }
+
         .group-link:hover {
-            background-color: #f5f5f5;
+            background-color: #cfcece;
             text-decoration: none;
         }
 
@@ -512,7 +586,14 @@ padding: 4px;
                 padding: 15px;
                 margin-bottom: 10px;
                 border-radius: 15px;
+                display: block;
             }
+
+            /* Вернуть старый мобильный вид: без линии и точек, по центру */
+            .time-cell::before { display: none; }
+            .time-dot { display: none; }
+            .time-cell .time-start, .time-cell .time-end { text-align: center; }
+            .time-cell .time-end { margin-top: 6px; }
             
             .auditory-cell {
                 display: none;
@@ -561,6 +642,7 @@ padding: 4px;
             .mobile-lesson-time {
                 font-size: 0.85em;
                 color: #666;
+                cursor: pointer;
             }
             
             .mobile-lesson-subject {
@@ -576,6 +658,8 @@ padding: 4px;
                 border-radius: 3px;
                 margin-right: 5px;
             }
+            
+            
             
             .mobile-lesson-groups {
                 display: flex;
@@ -595,6 +679,21 @@ padding: 4px;
                 color: #555;
                 margin-top: 3px;
             }
-        }
+            
+            .mobile-lesson-meta {
+                margin-top: 4px;
+                font-size: 0.85em;
+                color: #555;
+            }
 
+            
+
+            .mobile-lesson-note {
+                margin-top: 6px;
+                padding-top: 6px;
+                border-top: 1px dashed #eee;
+                font-size: 0.85em;
+                color: #444;
+            }
+        }
 
