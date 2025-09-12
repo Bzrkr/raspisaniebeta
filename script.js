@@ -505,7 +505,10 @@
                         let emoji = '';
                         const appearance = auditoryAppearanceMap.get(result.auditory);
                         if (appearance) {
-                            if (timeIndex === appearance.firstIndex) {
+                            if (timeIndex === appearance.firstIndex && timeIndex === appearance.lastIndex) {
+                                // Первая и одновременно последняя пара в этой аудитории за день — закрыто (нужно открыть) и закрыть по завершению
+                                emoji = ' 🔐🔑';
+                            } else if (timeIndex === appearance.firstIndex) {
                                 // Первая пара в этой аудитории за день — закрыто (нужно открыть)
                                 emoji = ' 🔐';
                             } else if (timeIndex < appearance.lastIndex) {
