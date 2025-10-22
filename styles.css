@@ -350,8 +350,8 @@ padding: 4px;
            past — салатовый круг с белой галочкой;
            ongoing-end — белый круг с синей обводкой */
         .time-dot.upcoming { background: #ffffff; border-color: #9fa9ba; }
-        .time-dot.now { background: #2a7bff; border-color: #2a7bff; }
-        .time-dot.past { background: #3bd35d; border-color: #3bd35d; }
+        .time-dot.now { background: #ffffff; border-color: #ffffff; }
+        .time-dot.past { background: #008000; border-color: #008000; }
         .time-dot.ongoing-end { background: #ffffff; border-color: #1890ff; }
 
         .time-dot.now::after,
@@ -371,13 +371,13 @@ padding: 4px;
 
         /* Белый значок часов */
         .time-dot.now::after {
-            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1024 1024'><path fill='%23ffffff' d='M512 64C264.6 64 64 264.6 64 512s200.6 448 448 448 448-200.6 448-448S759.4 64 512 64zm176.5 585.7l-28.6 39a7.99 7.99 0 0 1-11.2 1.7L483.3 569.8a7.92 7.92 0 0 1-3.3-6.5V288c0-4.4 3.6-8 8-8h48.1c4.4 0 8 3.6 8 8v247.5l142.6 103.1c3.6 2.5 4.4 7.5 1.8 11.1z'/></svg>");
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1024 1024'><path fill='%231890ff' d='M512 64C264.6 64 64 264.6 64 512s200.6 448 448 448 448-200.6 448-448S759.4 64 512 64zm176.5 585.7l-28.6 39a7.99 7.99 0 0 1-11.2 1.7L483.3 569.8a7.92 7.92 0 0 1-3.3-6.5V288c0-4.4 3.6-8 8-8h48.1c4.4 0 8 3.6 8 8v247.5l142.6 103.1c3.6 2.5 4.4 7.5 1.8 11.1z'></path></svg>");
         }
 
         /* Белая галочка (чистая), без кружка */
         .time-dot.past::after {
             background-image: none;
-            width: 3px;
+            width: 4px;
             height: 6px;
             border: solid #ffffff;
             border-width: 0 2px 2px 0;
@@ -499,6 +499,7 @@ padding: 4px;
         .Instpractice{ background-color: #ffffff; border-left: 4px solid #8e4fec; }
         .Instlab{ background-color: #ffffff; border-left: 4px solid #f98f43; }
         .Instlecture{ background-color: #ffffff; border-left: 4px solid #33db24; }
+        .announcement{ background-color: #fff3cd; border-left: 4px solid #ffc107; }
 
         /* Стили для кастомного чекбокса */
         .checkbox-container {
@@ -510,6 +511,9 @@ padding: 4px;
             font-size: 16px;
             user-select: none;
         }
+
+        /* По умолчанию скрываем мобильные элементы на десктопе */
+        .mobile-only { display: none; }
 
         .checkbox-container input {
             position: absolute;
@@ -717,5 +721,14 @@ padding: 4px;
                 font-size: 0.85em;
                 color: #444;
             }
+            
+            /* Стили для чекбоксов в мобильной версии */
+            .checkbox-container {
+                font-size: 14px;
+                margin: 5px 0;
+            }
+
+            /* На мобильных показываем элементы с классом mobile-only */
+            .mobile-only { display: inline-flex; }
         }
 

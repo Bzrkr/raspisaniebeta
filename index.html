@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+     <link rel="icon" type="image/x-icon" href="./favicon.ico">
     <title>Расписание кабинетов</title>
    <link rel="stylesheet" href="styles.css?v=1.0.1">
 </head>
@@ -52,10 +53,16 @@
     <input type="date" id="datePicker">
     <button id="nextDayBtn" class="nav-btn">→</button>
     <span id="weekDisplay"></span>
+
+    <label class="checkbox-container mobile-only">
+        <input type="checkbox" id="showAllAuditoriesCheckbox"> Показать все кабинеты
+        <span class="checkmark"></span>
+    </label>
     <label class="checkbox-container">
         <input type="checkbox" id="show602Checkbox"> 602-2 к.
         <span class="checkmark"></span>
     </label>
+    
 </div>
     <div id="schedules-container">
         <div id="schedules"></div>
@@ -63,3 +70,5 @@
     <script src="script.js"></script>
 </body>
 </html>
+
+
