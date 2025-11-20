@@ -1,12 +1,12 @@
 {
   "announcements": [
     {
-      "_id": "ann_mi78fwxo_1s9i",
+      "_id": "ann_mi7cfcda_9lz",
       "announcement": true,
       "auditories": [
         "607-2 к."
       ],
-      "note": "УИВР мероприятие",
+      "note": "УИВР мероприятие \"конкурс СУПЕР ПРОФИ 2025\"",
       "startLessonTime": "08:30",
       "endLessonTime": "11:30",
       "startLessonDate": "20.11.2025",
@@ -17,12 +17,12 @@
       "teacher": null
     },
     {
-      "_id": "ann_mi78i4kh_3a3",
+      "_id": "ann_mi7cfphe_drt",
       "announcement": true,
       "auditories": [
         "607-2 к."
       ],
-      "note": "УИВР мероприятие",
+      "note": "УИВР мероприятие \"конкурс СУПЕР ПРОФИ 2025\"",
       "startLessonTime": "15:30",
       "endLessonTime": "17:30",
       "startLessonDate": "20.11.2025",
