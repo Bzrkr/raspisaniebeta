@@ -21,6 +21,8 @@
         let teacherSchedulesData = null;
         let lastIsMobile = (typeof window !== 'undefined') ? window.innerWidth <= 768 : false;
         let timeUpdateTimer = null;
+        // Dev mode check: only show add/edit controls on dev.html
+        const isDevHtml = (typeof window !== 'undefined') && (window.location.pathname.endsWith('dev.html') || window.location.href.indexOf('dev.html') !== -1);
 
         // Функция для получения списка аудиторий с учетом чекбокса
         function getAuditoriesToShow() {
@@ -44,12 +46,27 @@
 
         // Загружаем локальный файл с выгрузкой
         const payload = await fetchJson('./schedules.json');
+        // Сохраняем оригинальный payload для дальнейшего экспорта/добавления
+        window.originalPayload = payload;
         teachersData = payload.teachers || [];
         teacherSchedulesData = payload.teacherSchedules || {};
+                // Попробуем загрузить локальный файл объявлений (announcement.json). Если нет — создадим пустую структуру
+                try {
+                    const annPayload = await fetchJson('./announcement.json');
+                    window.announcementsPayload = annPayload || { announcements: [] };
+                } catch (err) {
+                    window.announcementsPayload = { announcements: [] };
+                }
+                // Ensure every announcement has a stable _id
+                if (!window.announcementsPayload) window.announcementsPayload = { announcements: [] };
+                window.announcementsPayload.announcements = (window.announcementsPayload.announcements || []).map(a => {
+                    if (!a._id) a._id = generateAnnId();
+                    return a;
+                });
                 
                 // Устанавливаем текущую дату
                 const today = new Date();
-                //today.setHours(0, 0, 0, 0);
+                today.setHours(0, 0, 0, 0);
                 const yyyy = today.getFullYear();
                 const mm = String(today.getMonth() + 1).padStart(2, '0');
                 const dd = String(today.getDate()).padStart(2, '0');
@@ -68,6 +85,375 @@
                 alert('Произошла ошибка при загрузке данных');
             } finally {
                 document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        // Создаёт модальное окно для добавления объявления (если ещё не создано)
+        function ensureAnnouncementModal() {
+            if (document.getElementById('announcementModal')) return;
+            const modal = document.createElement('div');
+            modal.id = 'announcementModal';
+            modal.style.position = 'fixed';
+            modal.style.left = '0';
+            modal.style.top = '0';
+            modal.style.width = '100%';
+            modal.style.height = '100%';
+            modal.style.display = 'none';
+            modal.style.alignItems = 'center';
+            modal.style.justifyContent = 'center';
+            modal.style.background = 'rgba(0,0,0,0.4)';
+            modal.style.zIndex = '9999';
+
+            const box = document.createElement('div');
+            box.style.background = '#fff';
+            box.style.padding = '16px';
+            box.style.borderRadius = '8px';
+            box.style.maxWidth = '480px';
+            box.style.width = '92%';
+            box.style.boxShadow = '0 6px 18px rgba(0,0,0,0.2)';
+
+                        box.innerHTML = `
+                                <h3 style="margin-top:0"><span id="ann-modal-title">Добавить объявление</span></h3>
+                                <div style="display:flex;flex-direction:column;gap:8px">
+                                    <label>Аудитория:<br><input id="ann-auditory" type="text" readonly></label>
+                                    <label>Дата:<br><input id="ann-date" type="date"></label>
+                                    <label>Время начала:<br><input id="ann-start" type="time"></label>
+                                    <label>Время окончания:<br><input id="ann-end" type="time"></label>
+                                    <label>Текст объявления:<br><textarea id="ann-text" rows="3"></textarea></label>
+                                    <label>Номер группы (необязательно):<br><input id="ann-group" type="text"></label>
+                                    <label>ФИО преподавателя (необязательно):<br><input id="ann-teacher" type="text"></label>
+                                    <label>Заметки (необязательно):<br><input id="ann-notes" type="text"></label>
+                                    <div style="display:flex;gap:8px;justify-content:flex-end">
+                                        <button id="ann-delete" style="display:none;background:#fff;border:1px solid #e04;color:#c00;padding:6px 8px;border-radius:6px">Удалить</button>
+                                        <button id="ann-cancel">Отмена</button>
+                                        <button id="ann-submit">Добавить</button>
+                                    </div>
+                                </div>
+                        `;
+
+            modal.appendChild(box);
+            document.body.appendChild(modal);
+
+            document.getElementById('ann-cancel').addEventListener('click', () => {
+                // clear edit state
+                modal.dataset.editId = '';
+                document.getElementById('ann-delete').style.display = 'none';
+                document.getElementById('ann-submit').textContent = 'Добавить';
+                document.getElementById('ann-modal-title').textContent = 'Добавить объявление';
+                modal.style.display = 'none';
+            });
+
+            document.getElementById('ann-delete').addEventListener('click', () => {
+                const editId = modal.dataset.editId;
+                if (!editId) return;
+                if (!window.announcementsPayload) window.announcementsPayload = { announcements: [] };
+                const idx = window.announcementsPayload.announcements.findIndex(a => a._id === editId);
+                if (idx !== -1 && confirm('Удалить это объявление?')) {
+                    window.announcementsPayload.announcements.splice(idx, 1);
+                    // re-render
+                    if (document.getElementById('datePicker') && document.getElementById('datePicker').value) {
+                        const selectedDate = new Date(document.getElementById('datePicker').value);
+                        const weekNumber = calculateWeekNumber(selectedDate);
+                        updateSchedule(selectedDate, weekNumber);
+                    }
+                }
+                modal.dataset.editId = '';
+                document.getElementById('ann-delete').style.display = 'none';
+                document.getElementById('ann-submit').textContent = 'Добавить';
+                document.getElementById('ann-modal-title').textContent = 'Добавить объявление';
+                modal.style.display = 'none';
+            });
+
+            document.getElementById('ann-submit').addEventListener('click', () => {
+                const auditory = document.getElementById('ann-auditory').value;
+                const date = document.getElementById('ann-date').value;
+                const start = document.getElementById('ann-start').value;
+                const end = document.getElementById('ann-end').value;
+                const text = document.getElementById('ann-text').value;
+                const group = document.getElementById('ann-group').value;
+                const teacher = document.getElementById('ann-teacher').value;
+                const notes = document.getElementById('ann-notes').value;
+
+                if (!auditory || !date || !start) {
+                    alert('Пожалуйста, укажите аудиторию, дату и время начала.');
+                    return;
+                }
+
+                const annObj = {
+                    _id: null,
+                    announcement: true,
+                    auditories: [auditory],
+                    note: text || notes || null,
+                    startLessonTime: start,
+                    endLessonTime: end || start,
+                    startLessonDate: date.split('-').reverse().join('.'),
+                    endLessonDate: date.split('-').reverse().join('.'),
+                    dateLesson: null,
+                    lessonTypeAbbrev: null,
+                    studentGroups: group ? [{ name: group }] : [],
+                    teacher: teacher || null
+                };
+
+                const submitBtn = document.getElementById('ann-submit');
+                if (submitBtn.dataset.busy === '1') return;
+                submitBtn.dataset.busy = '1';
+                submitBtn.disabled = true;
+
+                // If editing — update existing
+                const editId = modal.dataset.editId;
+                if (editId) {
+                    if (!window.announcementsPayload) window.announcementsPayload = { announcements: [] };
+                    const idx = window.announcementsPayload.announcements.findIndex(a => a._id === editId);
+                    if (idx !== -1) {
+                        annObj._id = editId;
+                        window.announcementsPayload.announcements[idx] = annObj;
+                        // re-render after edit
+                        if (document.getElementById('datePicker') && document.getElementById('datePicker').value) {
+                            const selectedDate = new Date(document.getElementById('datePicker').value);
+                            const weekNumber = calculateWeekNumber(selectedDate);
+                            updateSchedule(selectedDate, weekNumber);
+                        }
+                    } else {
+                        // fallback: add as new
+                        annObj._id = generateAnnId();
+                        window.announcementsPayload.announcements.push(annObj);
+                        if (document.getElementById('datePicker') && document.getElementById('datePicker').value) {
+                            const selectedDate = new Date(document.getElementById('datePicker').value);
+                            const weekNumber = calculateWeekNumber(selectedDate);
+                            updateSchedule(selectedDate, weekNumber);
+                        }
+                    }
+                } else {
+                    // add new
+                    annObj._id = generateAnnId();
+                    addManualAnnouncement(auditory, date, annObj, teacher);
+                }
+
+                // reset modal state
+                modal.dataset.editId = '';
+                document.getElementById('ann-delete').style.display = 'none';
+                document.getElementById('ann-submit').textContent = 'Добавить';
+                document.getElementById('ann-modal-title').textContent = 'Добавить объявление';
+                modal.style.display = 'none';
+
+                setTimeout(() => { submitBtn.dataset.busy = '0'; submitBtn.disabled = false; }, 300);
+            });
+        }
+
+        function openAnnouncementModal(auditory, timeRange, dateIso, editId) {
+            ensureAnnouncementModal();
+            const modal = document.getElementById('announcementModal');
+            const [start, end] = timeRange.split('—').map(s => s.trim());
+            document.getElementById('ann-auditory').value = auditory;
+            if (dateIso) document.getElementById('ann-date').value = dateIso;
+            document.getElementById('ann-start').value = start.replace(' ', '') || '';
+            document.getElementById('ann-end').value = (end || start).replace(' ', '') || '';
+            // If editId provided, load announcement into fields
+            if (editId && window.announcementsPayload) {
+                const ann = window.announcementsPayload.announcements.find(a => a._id === editId);
+                if (ann) {
+                    document.getElementById('ann-auditory').value = (ann.auditories && ann.auditories[0]) || auditory;
+                    document.getElementById('ann-date').value = ddmmyyyyToIso(ann.startLessonDate) || dateIso || '';
+                    document.getElementById('ann-start').value = (ann.startLessonTime || start).replace(' ', '');
+                    document.getElementById('ann-end').value = (ann.endLessonTime || ann.startLessonTime || end || start).replace(' ', '');
+                    document.getElementById('ann-text').value = ann.note || '';
+                    document.getElementById('ann-group').value = (ann.studentGroups && ann.studentGroups[0] && ann.studentGroups[0].name) || '';
+                    document.getElementById('ann-teacher').value = ann.teacher || '';
+                    document.getElementById('ann-notes').value = ann.note || '';
+                    modal.dataset.editId = editId;
+                    document.getElementById('ann-delete').style.display = 'inline-block';
+                    document.getElementById('ann-submit').textContent = 'Сохранить';
+                    document.getElementById('ann-modal-title').textContent = 'Редактировать объявление';
+                    // Hide the 'Текст объявления' field when editing (user request)
+                    try {
+                        const textLabel = document.getElementById('ann-text')?.closest('label');
+                        if (textLabel) textLabel.style.display = 'none';
+                    } catch (e) { /* ignore if DOM structure differs */ }
+                }
+            } else {
+                document.getElementById('ann-text').value = '';
+                document.getElementById('ann-group').value = '';
+                document.getElementById('ann-teacher').value = '';
+                document.getElementById('ann-notes').value = '';
+                modal.dataset.editId = '';
+                document.getElementById('ann-delete').style.display = 'none';
+                document.getElementById('ann-submit').textContent = 'Добавить';
+                document.getElementById('ann-modal-title').textContent = 'Добавить объявление';
+                // Ensure 'Текст объявления' visible when adding
+                try {
+                    const textLabel = document.getElementById('ann-text')?.closest('label');
+                    if (textLabel) textLabel.style.display = '';
+                } catch (e) { /* ignore if DOM structure differs */ }
+            }
+            modal.style.display = 'flex';
+        }
+
+        // --- Export / Import Announcements UI ---
+        function ensureExportModal() {
+            if (document.getElementById('annExportModal')) return;
+            const modal = document.createElement('div');
+            modal.id = 'annExportModal';
+            modal.style.position = 'fixed';
+            modal.style.left = '0';
+            modal.style.top = '0';
+            modal.style.width = '100%';
+            modal.style.height = '100%';
+            modal.style.display = 'none';
+            modal.style.alignItems = 'center';
+            modal.style.justifyContent = 'center';
+            modal.style.background = 'rgba(0,0,0,0.45)';
+            modal.style.zIndex = '10000';
+
+            const box = document.createElement('div');
+            box.style.background = '#fff';
+            box.style.padding = '12px';
+            box.style.borderRadius = '8px';
+            box.style.maxWidth = '760px';
+            box.style.width = '94%';
+            box.style.maxHeight = '80%';
+            box.style.overflow = 'auto';
+
+            box.innerHTML = `
+                <h3 style="margin-top:0">Экспорт/Импорт объявлений</h3>
+                <div style="display:flex;gap:8px;margin-bottom:8px">
+                  <button id="ann-copy-btn">Копировать в буфер</button>
+                  <button id="ann-close-btn">Закрыть</button>
+                </div>
+                <textarea id="ann-export-text" rows="18" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #ccc;border-radius:6px;font-family:monospace"></textarea>
+            `;
+
+            modal.appendChild(box);
+            document.body.appendChild(modal);
+
+            document.getElementById('ann-close-btn').addEventListener('click', () => {
+                modal.style.display = 'none';
+            });
+
+            document.getElementById('ann-copy-btn').addEventListener('click', async () => {
+                const txt = document.getElementById('ann-export-text').value;
+                if (!txt) return alert('Нечего копировать');
+                try {
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        await navigator.clipboard.writeText(txt);
+                        alert('Содержимое скопировано в буфер обмена');
+                    } else {
+                        const ta = document.getElementById('ann-export-text');
+                        ta.select();
+                        document.execCommand('copy');
+                        alert('Содержимое скопировано в буфер обмена');
+                    }
+                } catch (err) {
+                    console.error('Не удалось скопировать', err);
+                    alert('Ошибка при копировании');
+                }
+            });
+        }
+
+        function openExportModal() {
+            ensureExportModal();
+            const modal = document.getElementById('annExportModal');
+            const ta = document.getElementById('ann-export-text');
+            try {
+                ta.value = JSON.stringify(window.announcementsPayload || { announcements: [] }, null, 2);
+            } catch (err) {
+                ta.value = '{}';
+            }
+            modal.style.display = 'flex';
+        }
+
+        // Обработка загрузки файла announcement.json через скрытый input
+        function handleAnnFileUpload(inputEl) {
+            const file = inputEl.files && inputEl.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const parsed = JSON.parse(e.target.result);
+                    if (!parsed || !Array.isArray(parsed.announcements)) {
+                        alert('Неверный формат файла. Ожидается объект с полем "announcements" (массив).');
+                        return;
+                    }
+                    // Merge with existing announcements
+                    const incoming = parsed.announcements;
+                    let added = 0;
+                    if (!window.announcementsPayload) window.announcementsPayload = { announcements: [] };
+                    for (const ann of incoming) {
+                        const exists = window.announcementsPayload.announcements.some(item => (
+                            (item.startLessonTime || '') === (ann.startLessonTime || '') &&
+                            (item.startLessonDate || '') === (ann.startLessonDate || '') &&
+                            JSON.stringify(item.auditories || []) === JSON.stringify(ann.auditories || []) &&
+                            ((item.note || '') === (ann.note || ''))
+                        ));
+                        if (!exists) {
+                            if (!ann._id) ann._id = generateAnnId();
+                            window.announcementsPayload.announcements.push(ann);
+                            added++;
+                        }
+                    }
+                    // Re-render
+                    if (document.getElementById('datePicker') && document.getElementById('datePicker').value) {
+                        const selectedDate = new Date(document.getElementById('datePicker').value);
+                        const weekNumber = calculateWeekNumber(selectedDate);
+                        updateSchedule(selectedDate, weekNumber);
+                    }
+                    alert(`Импорт завершён. Добавлено ${added} новых объявлений.`);
+                } catch (err) {
+                    console.error('Ошибка чтения файла объявлений', err);
+                    alert('Ошибка при чтении файла: ' + err.message);
+                }
+            };
+            reader.readAsText(file, 'utf-8');
+            // очистим значение, чтобы тот же файл можно было загрузить повторно при необходимости
+            inputEl.value = '';
+        }
+
+        // Добавляет объявление в announcement.json-пул, обновляет интерфейс и скачивает announcement.json
+        function addManualAnnouncement(auditory, dateIso, annObj, teacherFio) {
+            if (!window.announcementsPayload) window.announcementsPayload = { announcements: [] };
+
+            // Убедимся, что auditories поле заполнено
+            if (!Array.isArray(annObj.auditories) || annObj.auditories.length === 0) {
+                annObj.auditories = [auditory];
+            }
+
+            // Дедупликация по дате/времени/аудитории/текст
+            const exists = window.announcementsPayload.announcements.some(item => (
+                (item.startLessonTime || '') === (annObj.startLessonTime || '') &&
+                (item.startLessonDate || '') === (annObj.startLessonDate || '') &&
+                JSON.stringify(item.auditories || []) === JSON.stringify(annObj.auditories || []) &&
+                ((item.note || '') === (annObj.note || ''))
+            ));
+
+            if (!exists) {
+                if (!annObj._id) annObj._id = generateAnnId();
+                window.announcementsPayload.announcements.push(annObj);
+            }
+
+            // Обновим текущую страницу
+            if (document.getElementById('datePicker') && document.getElementById('datePicker').value) {
+                const selectedDate = new Date(document.getElementById('datePicker').value);
+                const weekNumber = calculateWeekNumber(selectedDate);
+                updateSchedule(selectedDate, weekNumber);
+            }
+        }
+
+        // Скачать current announcement.json (вручную кнопкой)
+        function downloadAnnouncementsFile() {
+            try {
+                if (!window.announcementsPayload) window.announcementsPayload = { announcements: [] };
+                const blob = new Blob([JSON.stringify(window.announcementsPayload, null, 2)], { type: 'application/json;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'announcement.json';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(url);
+                alert('Файл announcement.json скачан. Поместите его в папку приложения для сохранения объявлений.');
+            } catch (err) {
+                console.error('Не удалось скачать announcement.json', err);
+                alert('Ошибка при скачивании announcement.json');
             }
         }
 
@@ -115,6 +501,18 @@
         return null;
     }
 }
+
+        function ddmmyyyyToIso(ddmmy) {
+            if (!ddmmy) return '';
+            const parts = ddmmy.split('.');
+            if (parts.length !== 3) return '';
+            const [d, m, y] = parts;
+            return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+        }
+
+        function generateAnnId() {
+            return 'ann_' + Date.now().toString(36) + '_' + Math.floor(Math.random() * 100000).toString(36);
+        }
 
         function timeInRange(start, end, target) {
             return start <= target && target <= end;
@@ -223,30 +621,51 @@
             for (const teacher of teachersData) {
                 const teacherSchedule = teacherSchedulesData[teacher.urlId] || {};
                 
-                for (const scheduleType of ['schedules', 'previousSchedules']) {
-                    const daySchedule = teacherSchedule[scheduleType]?.[dayName] || [];
-                    
+                for (const scheduleType of ['schedules', 'previousSchedules', 'exams']) {
+                    let daySchedule = [];
+                    // 'exams' is returned as a flat array, not keyed by day name
+                    if (scheduleType === 'exams') {
+                        daySchedule = teacherSchedule.exams || [];
+                    } else {
+                        daySchedule = teacherSchedule[scheduleType]?.[dayName] || [];
+                    }
+
                     for (const lesson of daySchedule) {
                         const weekNumbers = lesson?.weekNumber || [];
+                        // Нормализуем недели к числам
+                        const normalizedWeeks = Array.isArray(weekNumbers)
+                            ? weekNumbers.map(w => Number(w)).filter(w => Number.isInteger(w))
+                            : [];
                         
-                        // Определяем, является ли запись объявлением (для проверки недели)
-                        const isAnnouncementForWeek = lesson.announcement || 
-                            (!lesson.subject && !lesson.subjectFullName && lesson.note && lesson.note.trim());
+                        // Определяем, является ли запись объявлением:
+                        // 1) явный флаг announcement
+                        // 2) subject == null И subjectFullName == null И note непустой
+                        const isAnnouncementForWeek = Boolean(lesson.announcement) || (
+                            (lesson.subject == null) && (lesson.subjectFullName == null) && !!(lesson.note && String(lesson.note).trim())
+                        );
                         
                         // Если объявления отключены и это объявление, пропускаем
                         if (!showAnnouncements && isAnnouncementForWeek) {
                             continue;
                         }
                         
-                        if (lesson.auditories && lesson.auditories.includes(auditory) && 
-                            (isAnnouncementForWeek || (Array.isArray(weekNumbers) && weekNumbers.includes(weekNumber)))) {
+                        // Сопоставление аудиторий по триммированным строкам
+                        const lessonAuditories = Array.isArray(lesson.auditories)
+                            ? lesson.auditories.map(a => (a ?? '').trim())
+                            : [];
+                        const targetAuditory = (auditory ?? '').trim();
+                        const isWeekMatch = isAnnouncementForWeek || normalizedWeeks.includes(Number(weekNumber));
+
+                        if (lessonAuditories.length > 0 && lessonAuditories.includes(targetAuditory) && isWeekMatch) {
                             
-                            const startDate = parseDate(lesson.startLessonDate);
+                                const startDate = parseDate(lesson.startLessonDate);
                             const endDate = parseDate(lesson.endLessonDate);
                             const lessonDate = parseDate(lesson.dateLesson);
+                            // Нормализуем выбранную дату к полуночи для корректного включения конечной даты
+                            const normalizedDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
                             
-                            if ((startDate && endDate && timeInRange(startDate, endDate, date)) || 
-                                (lessonDate && date.toDateString() === lessonDate.toDateString())) {
+                            if ((startDate && endDate && timeInRange(startDate, endDate, normalizedDate)) || 
+                                (lessonDate && normalizedDate.toDateString() === lessonDate.toDateString())) {
                                 
                                 const lessonStartTime = lesson.startLessonTime;
                                 const lessonEndTime = lesson.endLessonTime;
@@ -258,9 +677,10 @@
                                         if (!schedule[timeSlot]) {
                                             schedule[timeSlot] = [];
                                         }
-                                        // Определяем, является ли запись объявлением
-                                        const isAnnouncement = lesson.announcement || 
-                                            (!lesson.subject && !lesson.subjectFullName && lesson.note && lesson.note.trim());
+                                        // Определяем, является ли запись объявлением по тем же правилам
+                                        const isAnnouncement = Boolean(lesson.announcement) || (
+                                            (lesson.subject == null) && (lesson.subjectFullName == null) && !!(lesson.note && String(lesson.note).trim())
+                                        );
                                         
                                         const subjectDisplay = isAnnouncement
                                             ? 'ОБЪЯВЛЕНИЕ'
@@ -272,7 +692,7 @@
                                             startDate: lesson.startLessonDate || null,
                                             endDate: lesson.endLessonDate || null,
                                             dateLesson: lesson.dateLesson || null,
-                                            weeks: Array.isArray(weekNumbers) ? weekNumbers : [],
+                                            weeks: normalizedWeeks,
                                             teacher: teacher.fio,
                                             teacherUrlId: teacher.urlId,
                                             groups: lesson.studentGroups?.map(g => g.name) || [],
@@ -286,6 +706,59 @@
                         }
                     }
                 }
+            }
+
+            // Включаем пользовательские объявления из announcement.json
+            try {
+                const annArr = (window.announcementsPayload && Array.isArray(window.announcementsPayload.announcements)) ? window.announcementsPayload.announcements : [];
+                const targetAuditory = (auditory ?? '').trim();
+                const normalizedDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+                for (const lesson of annArr) {
+                    // Каждое объявление ожидается в формате, идентичном annObj: startLessonDate DD.MM.YYYY, auditories: ["..."]
+                    const lessonAuditories = Array.isArray(lesson.auditories) ? lesson.auditories.map(a => (a ?? '').trim()) : [];
+                    if (lessonAuditories.length === 0 || !lessonAuditories.includes(targetAuditory)) continue;
+
+                    // Если пользователь отключил показы объявлений — пропускаем
+                    if (!showAnnouncements) continue;
+
+                    const startDate = parseDate(lesson.startLessonDate);
+                    const endDate = parseDate(lesson.endLessonDate);
+                    const lessonDate = parseDate(lesson.dateLesson);
+
+                    if (!((startDate && endDate && timeInRange(startDate, endDate, normalizedDate)) || (lessonDate && normalizedDate.toDateString() === lessonDate.toDateString()) || (lesson.startLessonDate && normalizedDate.toDateString() === parseDate(lesson.startLessonDate).toDateString()))) {
+                        continue;
+                    }
+
+                    const lessonStartTime = lesson.startLessonTime;
+                    const lessonEndTime = lesson.endLessonTime || lessonStartTime;
+
+                    for (const timeSlot of timeSlotsOrder) {
+                        const [slotStart, slotEnd] = timeSlot.split('—');
+                        if (isTimeInSlot(lessonStartTime, lessonEndTime, slotStart, slotEnd)) {
+                            if (!schedule[timeSlot]) schedule[timeSlot] = [];
+                            const subjectLabel = ((lesson.teacher && String(lesson.teacher).trim()) || (lesson.teacherFio && String(lesson.teacherFio).trim())) ? 'ОБЪЯВЛЕНИЕ' : 'ОБЪЯВЛЕНИЕ';
+                            schedule[timeSlot].push({
+                                subject: subjectLabel,
+                                type: lesson.lessonTypeAbbrev || null,
+                                note: lesson.note || null,
+                                startDate: lesson.startLessonDate || null,
+                                endDate: lesson.endLessonDate || null,
+                                dateLesson: lesson.dateLesson || null,
+                                weeks: [],
+                                teacher: lesson.teacher || (lesson.teacherFio || '-'),
+                                teacherUrlId: null,
+                                groups: lesson.studentGroups?.map(g => g.name) || (lesson.studentGroups || []).map(g=>g?.name).filter(Boolean) || [],
+                                startTime: lessonStartTime,
+                                endTime: lessonEndTime,
+                                isAnnouncement: true,
+                                annId: lesson._id || null
+                            });
+                        }
+                    }
+                }
+            } catch (err) {
+                console.warn('Ошибка при обработке announcement.json', err);
             }
             
             return schedule;
@@ -413,38 +886,48 @@
                             cell.classList.add('current-time-slot');
                         }
                         
-                        const lessons = result.schedule[timeSlot];
+                        const [slotStartRaw, slotEndRaw] = timeSlot.split('—');
+                        const slotStart = slotStartRaw.trim();
+                        const slotEnd = slotEndRaw.trim();
+                        const lessons = (result.schedule[timeSlot] || []).filter(lsn => {
+                            try {
+                                if (!lsn || !lsn.startTime || !lsn.endTime) return false;
+                                return isTimeInSlot(lsn.startTime, lsn.endTime, slotStart, slotEnd);
+                            } catch (e) { return false; }
+                        });
                         if (lessons && lessons.length > 0) {
+                            // Сортируем уроки по началу и рендерим все (ранний будет сверху)
+                            lessons.sort((a, b) => { try { return convertToMinutes(a.startTime) - convertToMinutes(b.startTime); } catch (e) { return 0; } });
                             lessons.forEach(lesson => {
                                 const lessonDiv = document.createElement('div');
                                 const typeClass = getLessonTypeClass(lesson.type, lesson.isAnnouncement);
                                 lessonDiv.className = `lesson ${typeClass}`;
-                                
-                                const startTime = lesson.startTime.substring(0, 5);
-                                const endTime = lesson.endTime.substring(0, 5);
-                                const groupsText = lesson.groups.length > 0 
-                                    ? lesson.groups.map(g => 
+
+                                const startTime = (lesson.startTime || '').substring(0, 5);
+                                const endTime = (lesson.endTime || '').substring(0, 5);
+                                const groupsText = (lesson.groups || []).length > 0 
+                                    ? (lesson.groups || []).map(g => 
                                         `<a href="https://iis.bsuir.by/schedule/${g}" target="_blank" class="group-link">${g}</a>`
                                       ).join(', ')
                                     : '';
-                                
+
                                 const periodHtml = (lesson.dateLesson && lesson.dateLesson.trim())
-                                    ? `<div class=\"lesson-period\">Дата: ${lesson.dateLesson}</div>`
+                                    ? `<div class="lesson-period">Дата: ${lesson.dateLesson}</div>`
                                     : ((lesson.startDate || lesson.endDate)
-                                        ? `<div class=\"lesson-period\">Период: с ${lesson.startDate || ''}${(lesson.startDate && lesson.endDate) ? ' по ' : ''}${lesson.endDate || ''}</div>`
+                                        ? `<div class="lesson-period">Период: с ${lesson.startDate || ''}${(lesson.startDate && lesson.endDate) ? ' по ' : ''}${lesson.endDate || ''}</div>`
                                         : '');
                                 const weeksHtml = (lesson.weeks && lesson.weeks.length > 0)
-                                    ? `<div class=\"lesson-weeks\">Недели: ${lesson.weeks.join(', ')}</div>`
+                                    ? `<div class="lesson-weeks">Недели: ${lesson.weeks.join(', ')}</div>`
                                     : '';
                                 const teacherUrl = lesson.teacherUrlId
                                     ? `https://iis.bsuir.by/schedule/${encodeURIComponent(lesson.teacherUrlId)}`
                                     : `https://iis.bsuir.by/schedule/`;
                                 lessonDiv.innerHTML = `
                                     <div class="lesson-time">${startTime}—${endTime}</div>
-                                    ${(periodHtml || weeksHtml) ? `<div class=\"lesson-meta\">${periodHtml}${weeksHtml}</div>` : ''}
-                                    <div class="lesson-subject">${lesson.subject}${lesson.type ? ` <span class=\"lesson-type-inline\">(${lesson.type})</span>` : ''}</div>
+                                    ${(periodHtml || weeksHtml) ? `<div class="lesson-meta">${periodHtml}${weeksHtml}</div>` : ''}
+                                    <div class="lesson-subject">${lesson.subject || ''}${lesson.type ? ` <span class="lesson-type-inline">(${lesson.type})</span>` : ''}</div>
                                     ${groupsText ? `<div class="lesson-groups">${groupsText}</div>` : ''}
-                                    <div><a href="${teacherUrl}" target="_blank" rel="noopener" class="teacher-link">${lesson.teacher}</a></div>
+                                    <div><a href="${teacherUrl}" target="_blank" rel="noopener" class="teacher-link">${lesson.teacher || ''}</a></div>
                                     ${lesson.note ? `<div class="lesson-note">${lesson.note}</div>` : ''}
                                 `;
                                 // Toggle meta visibility on time click
@@ -456,12 +939,43 @@
                                         desktopMetaEl.style.display = (desktopMetaEl.style.display === 'none') ? 'block' : 'none';
                                     });
                                 }
+                                // If this lesson is an announcement from announcement.json, add edit button (dev only)
+                                if (isDevHtml && lesson.isAnnouncement && lesson.annId) {
+                                    const editBtn = document.createElement('button');
+                                    editBtn.className = 'ann-edit-btn';
+                                    editBtn.textContent = '✎';
+                                    editBtn.title = 'Редактировать объявление';
+                                    editBtn.style.marginLeft = '8px';
+                                    editBtn.style.padding = '2px 6px';
+                                    editBtn.style.fontSize = '12px';
+                                    editBtn.addEventListener('click', (e) => {
+                                        e.stopPropagation();
+                                        const dateIso = document.getElementById('datePicker') ? document.getElementById('datePicker').value : '';
+                                        openAnnouncementModal(result.auditory, timeSlot, dateIso, lesson.annId);
+                                    });
+                                    lessonDiv.appendChild(editBtn);
+                                }
                                 cell.appendChild(lessonDiv);
                             });
                         } else {
                             const noLessonDiv = document.createElement('div');
                             noLessonDiv.className = 'lesson no-lesson';
-                            noLessonDiv.textContent = 'Занятий нет';
+                            // Текст + inline плюс для добавления объявления
+                            const textSpan = document.createElement('span');
+                            textSpan.textContent = 'Занятий нет';
+                            const actionSpan = document.createElement('span');
+                            actionSpan.className = 'add-ann-inline';
+                            actionSpan.textContent = '  +';
+                            actionSpan.title = 'Добавить объявление';
+                            actionSpan.addEventListener('click', (e) => {
+                                e.stopPropagation();
+                                const dateIso = document.getElementById('datePicker') ? document.getElementById('datePicker').value : '';
+                                openAnnouncementModal(result.auditory, timeSlot, dateIso);
+                            });
+                            noLessonDiv.appendChild(textSpan);
+                            if (isDevHtml) {
+                                noLessonDiv.appendChild(actionSpan);
+                            }
                             cell.appendChild(noLessonDiv);
                         }
                         
@@ -550,9 +1064,15 @@
                 auditoriesContainer.className = 'mobile-auditories-container';
                 const audFrag = document.createDocumentFragment();
                 
-                // Собираем аудитории с занятиями в этом временном интервале
+                // Собираем аудитории с занятиями в этом временном интервале (фильтруем по времени слота)
                 const auditoriesWithLessons = results.filter(result => {
-                    return result.schedule[timeSlot] && result.schedule[timeSlot].length > 0;
+                    const slotTimes = timeSlot.split('—');
+                    const slotStart = (slotTimes[0] || '').trim();
+                    const slotEnd = (slotTimes[1] || '').trim();
+                    const lessonsInSlot = (result.schedule[timeSlot] || []).filter(lsn => {
+                        try { if (!lsn || !lsn.startTime || !lsn.endTime) return false; return isTimeInSlot(lsn.startTime, lsn.endTime, slotStart, slotEnd); } catch (e) { return false; }
+                    });
+                    return lessonsInSlot.length > 0;
                 });
                 
                 // Получаем список всех аудиторий для отображения
@@ -600,7 +1120,9 @@
                             auditoryName.textContent = result.auditory;
                         }
                         if (lessonsInThisSlot.length > 0) {
-                            lessonsInThisSlot.forEach(lesson => {
+                            // Если несколько записей в слоте — показываем только ту, что начинается раньше
+                            lessonsInThisSlot.sort((a, b) => { try { return convertToMinutes(a.startTime) - convertToMinutes(b.startTime); } catch (e) { return 0; } });
+                            const lesson = lessonsInThisSlot[0];
                             const lessonDiv = document.createElement('div');
                             const typeClass = getLessonTypeClass(lesson.type, lesson.isAnnouncement);
                             lessonDiv.className = `mobile-lesson ${typeClass}`;
@@ -613,20 +1135,20 @@
                                 : '';
                             
                             const periodHtml = (lesson.dateLesson && lesson.dateLesson.trim())
-                                ? `<div class=\"mobile-lesson-period\">Дата: ${lesson.dateLesson}</div>`
+                                ? `<div class="mobile-lesson-period">Дата: ${lesson.dateLesson}</div>`
                                 : ((lesson.startDate || lesson.endDate)
-                                    ? `<div class=\"mobile-lesson-period\">Период: с ${lesson.startDate || ''}${(lesson.startDate && lesson.endDate) ? ' по ' : ''}${lesson.endDate || ''}</div>`
+                                    ? `<div class="mobile-lesson-period">Период: с ${lesson.startDate || ''}${(lesson.startDate && lesson.endDate) ? ' по ' : ''}${lesson.endDate || ''}</div>`
                                     : '');
                             const weeksHtml = (lesson.weeks && lesson.weeks.length > 0)
-                                ? `<div class=\"mobile-lesson-weeks\">Недели: ${lesson.weeks.join(', ')}</div>`
+                                ? `<div class="mobile-lesson-weeks">Недели: ${lesson.weeks.join(', ')}</div>`
                                 : '';
                             const teacherUrl = lesson.teacherUrlId
                                 ? `https://iis.bsuir.by/schedule/${encodeURIComponent(lesson.teacherUrlId)}`
                                 : `https://iis.bsuir.by/schedule/`;
                             lessonDiv.innerHTML = `
                                 <div class="mobile-lesson-time">${startTime}—${endTime}</div>
-                                ${(periodHtml || weeksHtml) ? `<div class=\"mobile-lesson-meta\">${periodHtml}${weeksHtml}</div>` : ''}
-                                <div class="mobile-lesson-subject">${lesson.subject}${lesson.type ? ` <span class=\"lesson-type-inline\">(${lesson.type})</span>` : ''}</div>
+                                ${(periodHtml || weeksHtml) ? `<div class="mobile-lesson-meta">${periodHtml}${weeksHtml}</div>` : ''}
+                                <div class="mobile-lesson-subject">${lesson.subject}${lesson.type ? ` <span class="lesson-type-inline">(${lesson.type})</span>` : ''}</div>
                                 ${groupsText ? `<div class="mobile-lesson-groups">${groupsText}</div>` : ''}
                                 <div class="mobile-lesson-teacher"><a href="${teacherUrl}" target="_blank" rel="noopener" class="teacher-link">${lesson.teacher}</a></div>
                                 ${lesson.note ? `<div class="mobile-lesson-note">${lesson.note}</div>` : ''}
@@ -640,13 +1162,42 @@
                                     mobileMetaEl.style.display = (mobileMetaEl.style.display === 'none') ? 'block' : 'none';
                                 });
                             }
+                            // If announcement from announcement.json — add edit button
+                            if (lesson.isAnnouncement && lesson.annId) {
+                                const editBtn = document.createElement('button');
+                                editBtn.className = 'ann-edit-btn';
+                                editBtn.textContent = '✎';
+                                editBtn.title = 'Редактировать объявление';
+                                editBtn.style.marginTop = '6px';
+                                editBtn.style.padding = '4px 8px';
+                                editBtn.style.fontSize = '12px';
+                                editBtn.addEventListener('click', (e) => {
+                                    e.stopPropagation();
+                                    const dateIso = document.getElementById('datePicker') ? document.getElementById('datePicker').value : '';
+                                    openAnnouncementModal(result.auditory, timeSlot, dateIso, lesson.annId);
+                                });
+                                lessonDiv.appendChild(editBtn);
+                            }
                             auditoryCard.appendChild(lessonDiv);
-                        });
                         } else {
-                            // Если занятий нет, но чекбокс "Показать все кабинеты" включен, показываем сообщение
+                            // Если занятий нет, но чекбокс "Показать все кабинеты" включен, показываем сообщение с кнопкой
                             const noLessonDiv = document.createElement('div');
                             noLessonDiv.className = 'mobile-lesson no-lesson';
-                            noLessonDiv.textContent = 'Занятий нет';
+                            const t = document.createElement('div');
+                            t.textContent = 'Занятий нет';
+                            const actionSpan = document.createElement('span');
+                            actionSpan.className = 'add-ann-inline';
+                            actionSpan.textContent = '  +';
+                            actionSpan.title = 'Добавить объявление';
+                            actionSpan.addEventListener('click', (e) => {
+                                e.stopPropagation();
+                                const dateIso = document.getElementById('datePicker') ? document.getElementById('datePicker').value : '';
+                                openAnnouncementModal(result.auditory, timeSlot, dateIso);
+                            });
+                            noLessonDiv.appendChild(t);
+                            if (isDevHtml) {
+                                noLessonDiv.appendChild(actionSpan);
+                            }
                             auditoryCard.appendChild(noLessonDiv);
                         }
                         
@@ -657,7 +1208,21 @@
                     // Показываем "Занятий нет" только если чекбокс "Показать все кабинеты" не включен
                     const noLessons = document.createElement('div');
                     noLessons.className = 'mobile-auditory-card';
-                    noLessons.textContent = 'Занятий нет';
+                    const t = document.createElement('div');
+                    t.textContent = 'Занятий нет';
+                    const actionSpan = document.createElement('span');
+                    actionSpan.className = 'add-ann-inline';
+                    actionSpan.textContent = '  +';
+                    actionSpan.title = 'Добавить объявление';
+                    actionSpan.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const dateIso = document.getElementById('datePicker') ? document.getElementById('datePicker').value : '';
+                        openAnnouncementModal(allAuditoriesToShow[0] || '', timeSlot, dateIso);
+                    });
+                    noLessons.appendChild(t);
+                    if (isDevHtml) {
+                        noLessons.appendChild(actionSpan);
+                    }
                     audFrag.appendChild(noLessons);
                     auditoriesContainer.appendChild(audFrag);
                 }
@@ -730,6 +1295,16 @@
                     await updateSchedule(selectedDate, weekNumber);
                 }
             });
+
+            // Кнопки экспорт/импорт объявлений
+            const exportBtn = document.getElementById('exportAnnouncementsBtn');
+            if (exportBtn) exportBtn.addEventListener('click', openExportModal);
+            const importBtn = document.getElementById('importAnnouncementsBtn');
+            if (importBtn) importBtn.addEventListener('click', () => document.getElementById('annFileInput').click());
+            const fileInput = document.getElementById('annFileInput');
+            if (fileInput) fileInput.addEventListener('change', (e) => handleAnnFileUpload(e.target));
+            const downloadBtn = document.getElementById('downloadAnnouncementsBtn');
+            if (downloadBtn) downloadBtn.addEventListener('click', downloadAnnouncementsFile);
         // Обработчики для кнопок переключения дней
 document.getElementById('prevDayBtn').addEventListener('click', () => {
     const datePicker = document.getElementById('datePicker');

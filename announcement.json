@@ -1,0 +1,36 @@
+{
+  "announcements": [
+    {
+      "_id": "ann_mi78fwxo_1s9i",
+      "announcement": true,
+      "auditories": [
+        "607-2 к."
+      ],
+      "note": "УИВР мероприятие",
+      "startLessonTime": "08:30",
+      "endLessonTime": "11:30",
+      "startLessonDate": "20.11.2025",
+      "endLessonDate": "20.11.2025",
+      "dateLesson": null,
+      "lessonTypeAbbrev": null,
+      "studentGroups": [],
+      "teacher": null
+    },
+    {
+      "_id": "ann_mi78i4kh_3a3",
+      "announcement": true,
+      "auditories": [
+        "607-2 к."
+      ],
+      "note": "УИВР мероприятие",
+      "startLessonTime": "15:30",
+      "endLessonTime": "17:30",
+      "startLessonDate": "20.11.2025",
+      "endLessonDate": "20.11.2025",
+      "dateLesson": null,
+      "lessonTypeAbbrev": null,
+      "studentGroups": [],
+      "teacher": null
+    }
+  ]
+}
