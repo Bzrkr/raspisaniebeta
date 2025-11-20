@@ -179,11 +179,13 @@
                     return;
                 }
 
+                const noteValue = (notes && notes.trim()) || (text && text.trim()) || null;
+
                 const annObj = {
                     _id: null,
                     announcement: true,
                     auditories: [auditory],
-                    note: text || notes || null,
+                    note: noteValue,
                     startLessonTime: start,
                     endLessonTime: end || start,
                     startLessonDate: date.split('-').reverse().join('.'),
@@ -1163,21 +1165,7 @@
                                 });
                             }
                             // If announcement from announcement.json — add edit button
-                            if (lesson.isAnnouncement && lesson.annId) {
-                                const editBtn = document.createElement('button');
-                                editBtn.className = 'ann-edit-btn';
-                                editBtn.textContent = '✎';
-                                editBtn.title = 'Редактировать объявление';
-                                editBtn.style.marginTop = '6px';
-                                editBtn.style.padding = '4px 8px';
-                                editBtn.style.fontSize = '12px';
-                                editBtn.addEventListener('click', (e) => {
-                                    e.stopPropagation();
-                                    const dateIso = document.getElementById('datePicker') ? document.getElementById('datePicker').value : '';
-                                    openAnnouncementModal(result.auditory, timeSlot, dateIso, lesson.annId);
-                                });
-                                lessonDiv.appendChild(editBtn);
-                            }
+                           
                             auditoryCard.appendChild(lessonDiv);
                         } else {
                             // Если занятий нет, но чекбокс "Показать все кабинеты" включен, показываем сообщение с кнопкой
