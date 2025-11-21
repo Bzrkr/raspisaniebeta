@@ -63,6 +63,11 @@
                     if (!a._id) a._id = generateAnnId();
                     return a;
                 });
+                // Создаём скрытый модальный элемент и заполняем datalist'ы (чтобы можно было выбирать или вводить)
+                try {
+                    ensureAnnouncementModal();
+                    fillAnnouncementDatalists();
+                } catch (e) { console.warn('Не удалось инициализировать datalist объявлений', e); }
                 
                 // Устанавливаем текущую дату
                 const today = new Date();
@@ -119,10 +124,16 @@
                                     <label>Дата:<br><input id="ann-date" type="date"></label>
                                     <label>Время начала:<br><input id="ann-start" type="time"></label>
                                     <label>Время окончания:<br><input id="ann-end" type="time"></label>
-                                    <label>Текст объявления:<br><textarea id="ann-text" rows="3"></textarea></label>
-                                    <label>Номер группы (необязательно):<br><input id="ann-group" type="text"></label>
-                                    <label>ФИО преподавателя (необязательно):<br><input id="ann-teacher" type="text"></label>
-                                    <label>Заметки (необязательно):<br><input id="ann-notes" type="text"></label>
+                                    <!-- поле "Текст объявления" удалено: используется только "Заметки" -->
+                                    <label>Номер группы (необязательно):<br>
+                                        <input id="ann-group" type="text" list="groups-list" placeholder="введите или выберите из списка">
+                                        <datalist id="groups-list"></datalist>
+                                    </label>
+                                    <label>ФИО преподавателя (необязательно):<br>
+                                        <input id="ann-teacher" type="text" list="teachers-list" placeholder="введите или выберите из списка">
+                                        <datalist id="teachers-list"></datalist>
+                                    </label>
+                                    <label>Заметки (необязательно):<br><textarea id="ann-notes" rows="3"></textarea></label>
                                     <div style="display:flex;gap:8px;justify-content:flex-end">
                                         <button id="ann-delete" style="display:none;background:#fff;border:1px solid #e04;color:#c00;padding:6px 8px;border-radius:6px">Удалить</button>
                                         <button id="ann-cancel">Отмена</button>
@@ -169,7 +180,7 @@
                 const date = document.getElementById('ann-date').value;
                 const start = document.getElementById('ann-start').value;
                 const end = document.getElementById('ann-end').value;
-                const text = document.getElementById('ann-text').value;
+                // текст объявления удалён; используем только заметки из ann-notes
                 const group = document.getElementById('ann-group').value;
                 const teacher = document.getElementById('ann-teacher').value;
                 const notes = document.getElementById('ann-notes').value;
@@ -179,7 +190,7 @@
                     return;
                 }
 
-                const noteValue = (notes && notes.trim()) || (text && text.trim()) || null;
+                const noteValue = (notes && notes.trim()) || null;
 
                 const annObj = {
                     _id: null,
@@ -242,6 +253,97 @@
             });
         }
 
+        // Собирает уникальные номера групп из teacherSchedulesData
+        function extractUniqueGroups() {
+            const set = new Set();
+            try {
+                if (!teacherSchedulesData) return [];
+                for (const key in teacherSchedulesData) {
+                    const sch = teacherSchedulesData[key] || {};
+                    ['schedules', 'previousSchedules', 'exams'].forEach(type => {
+                        if (type === 'exams') {
+                            const arr = sch.exams || [];
+                            arr.forEach(entry => {
+                                (entry.studentGroups || []).forEach(g => { if (g && g.name) set.add(g.name); });
+                            });
+                        } else {
+                            const days = sch[type] || {};
+                            Object.values(days).forEach(dayArr => {
+                                (dayArr || []).forEach(lesson => {
+                                    (lesson.studentGroups || []).forEach(g => { if (g && g.name) set.add(g.name); });
+                                });
+                            });
+                        }
+                    });
+                }
+            } catch (e) {
+                console.warn('Ошибка при извлечении групп:', e);
+            }
+            return Array.from(set).sort((a, b) => a.localeCompare(b, 'ru'));
+        }
+
+        // Пытаемся найти urlId преподавателя по строке ФИО (включая варианты с рангом в скобках)
+        function findTeacherUrlIdByFio(fioStr) {
+            try {
+                if (!fioStr || !Array.isArray(teachersData)) return null;
+                const normalize = s => (s || '').replace(/\s*\(.*?\)\s*/g, '').trim().toLowerCase();
+                const target = normalize(fioStr);
+                if (!target) return null;
+
+                // 1) точное совпадение по fio
+                for (const t of teachersData) {
+                    if (!t || !t.fio) continue;
+                    if (normalize(t.fio) === target) return t.urlId || null;
+                }
+
+                // 2) вхождение (например, запись без должности)
+                for (const t of teachersData) {
+                    if (!t || !t.fio) continue;
+                    if (normalize(t.fio).includes(target) || target.includes(normalize(t.fio))) return t.urlId || null;
+                }
+
+                // 3) попытка по фамилии (первое слово в строке)
+                const lastName = target.split(' ')[0];
+                if (lastName) {
+                    for (const t of teachersData) {
+                        if (!t || !t.lastName) continue;
+                        if (String(t.lastName).toLowerCase().startsWith(lastName)) return t.urlId || null;
+                    }
+                }
+            } catch (e) {
+                console.warn('findTeacherUrlIdByFio error', e);
+            }
+            return null;
+        }
+
+        // Заполняет datalist для групп и преподавателей (позволяет ввод или выбор)
+        function fillAnnouncementDatalists() {
+            const groupsList = document.getElementById('groups-list');
+            const teachersList = document.getElementById('teachers-list');
+            try {
+                if (groupsList) {
+                    groupsList.innerHTML = '';
+                    const groups = extractUniqueGroups();
+                    groups.forEach(g => {
+                        const opt = document.createElement('option');
+                        opt.value = g;
+                        groupsList.appendChild(opt);
+                    });
+                }
+                if (teachersList) {
+                    teachersList.innerHTML = '';
+                    (teachersData || []).forEach(t => {
+                        const name = t.fio || [t.lastName, t.firstName, t.middleName].filter(Boolean).join(' ');
+                        const opt = document.createElement('option');
+                        opt.value = name;
+                        teachersList.appendChild(opt);
+                    });
+                }
+            } catch (e) {
+                console.warn('Ошибка при заполнении datalist объявлений:', e);
+            }
+        }
+
         function openAnnouncementModal(auditory, timeRange, dateIso, editId) {
             ensureAnnouncementModal();
             const modal = document.getElementById('announcementModal');
@@ -258,7 +360,6 @@
                     document.getElementById('ann-date').value = ddmmyyyyToIso(ann.startLessonDate) || dateIso || '';
                     document.getElementById('ann-start').value = (ann.startLessonTime || start).replace(' ', '');
                     document.getElementById('ann-end').value = (ann.endLessonTime || ann.startLessonTime || end || start).replace(' ', '');
-                    document.getElementById('ann-text').value = ann.note || '';
                     document.getElementById('ann-group').value = (ann.studentGroups && ann.studentGroups[0] && ann.studentGroups[0].name) || '';
                     document.getElementById('ann-teacher').value = ann.teacher || '';
                     document.getElementById('ann-notes').value = ann.note || '';
@@ -268,12 +369,11 @@
                     document.getElementById('ann-modal-title').textContent = 'Редактировать объявление';
                     // Hide the 'Текст объявления' field when editing (user request)
                     try {
-                        const textLabel = document.getElementById('ann-text')?.closest('label');
-                        if (textLabel) textLabel.style.display = 'none';
+                        // поле текста объявления удалено — ничего скрывать не нужно
                     } catch (e) { /* ignore if DOM structure differs */ }
                 }
             } else {
-                document.getElementById('ann-text').value = '';
+                // поле текста объявления удалено
                 document.getElementById('ann-group').value = '';
                 document.getElementById('ann-teacher').value = '';
                 document.getElementById('ann-notes').value = '';
@@ -283,8 +383,7 @@
                 document.getElementById('ann-modal-title').textContent = 'Добавить объявление';
                 // Ensure 'Текст объявления' visible when adding
                 try {
-                    const textLabel = document.getElementById('ann-text')?.closest('label');
-                    if (textLabel) textLabel.style.display = '';
+                    // поле текста объявления удалено — ничего показывать не нужно
                 } catch (e) { /* ignore if DOM structure differs */ }
             }
             modal.style.display = 'flex';
@@ -740,6 +839,8 @@
                         if (isTimeInSlot(lessonStartTime, lessonEndTime, slotStart, slotEnd)) {
                             if (!schedule[timeSlot]) schedule[timeSlot] = [];
                             const subjectLabel = ((lesson.teacher && String(lesson.teacher).trim()) || (lesson.teacherFio && String(lesson.teacherFio).trim())) ? 'ОБЪЯВЛЕНИЕ' : 'ОБЪЯВЛЕНИЕ';
+                            const teacherName = lesson.teacher || (lesson.teacherFio || '-');
+                            const matchedUrlId = findTeacherUrlIdByFio(teacherName) || null;
                             schedule[timeSlot].push({
                                 subject: subjectLabel,
                                 type: lesson.lessonTypeAbbrev || null,
@@ -748,8 +849,8 @@
                                 endDate: lesson.endLessonDate || null,
                                 dateLesson: lesson.dateLesson || null,
                                 weeks: [],
-                                teacher: lesson.teacher || (lesson.teacherFio || '-'),
-                                teacherUrlId: null,
+                                teacher: teacherName,
+                                teacherUrlId: matchedUrlId,
                                 groups: lesson.studentGroups?.map(g => g.name) || (lesson.studentGroups || []).map(g=>g?.name).filter(Boolean) || [],
                                 startTime: lessonStartTime,
                                 endTime: lessonEndTime,
@@ -921,8 +1022,9 @@
                                 const weeksHtml = (lesson.weeks && lesson.weeks.length > 0)
                                     ? `<div class="lesson-weeks">Недели: ${lesson.weeks.join(', ')}</div>`
                                     : '';
-                                const teacherUrl = lesson.teacherUrlId
-                                    ? `https://iis.bsuir.by/schedule/${encodeURIComponent(lesson.teacherUrlId)}`
+                                const resolvedTeacherUrlId = lesson.teacherUrlId || findTeacherUrlIdByFio(lesson.teacher);
+                                const teacherUrl = resolvedTeacherUrlId
+                                    ? `https://iis.bsuir.by/schedule/${encodeURIComponent(resolvedTeacherUrlId)}`
                                     : `https://iis.bsuir.by/schedule/`;
                                 lessonDiv.innerHTML = `
                                     <div class="lesson-time">${startTime}—${endTime}</div>
@@ -1144,8 +1246,9 @@
                             const weeksHtml = (lesson.weeks && lesson.weeks.length > 0)
                                 ? `<div class="mobile-lesson-weeks">Недели: ${lesson.weeks.join(', ')}</div>`
                                 : '';
-                            const teacherUrl = lesson.teacherUrlId
-                                ? `https://iis.bsuir.by/schedule/${encodeURIComponent(lesson.teacherUrlId)}`
+                            const resolvedMobileTeacherUrlId = lesson.teacherUrlId || findTeacherUrlIdByFio(lesson.teacher);
+                            const teacherUrl = resolvedMobileTeacherUrlId
+                                ? `https://iis.bsuir.by/schedule/${encodeURIComponent(resolvedMobileTeacherUrlId)}`
                                 : `https://iis.bsuir.by/schedule/`;
                             lessonDiv.innerHTML = `
                                 <div class="mobile-lesson-time">${startTime}—${endTime}</div>
