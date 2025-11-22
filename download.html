@@ -94,11 +94,15 @@
 
                 saveAsJson('schedules.json', payload);
                 log('Готово. Файл schedules.json сохранён. Загрузите его в корень сайта (рядом с index.html).');
+              
             } catch (e) {
                 log('Ошибка: ' + e.message);
             } finally {
                 btn.disabled = false;
             }
+             
+                    window.open('https://github.com/Bzrkr/raspisaniebeta/upload/main', '_blank', 'noopener');
+              
         }
     </script>
 </head>

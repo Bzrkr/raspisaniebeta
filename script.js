@@ -50,6 +50,18 @@
         window.originalPayload = payload;
         teachersData = payload.teachers || [];
         teacherSchedulesData = payload.teacherSchedules || {};
+                // Отображаем дату генерации файла schedules.json (generatedAt) в контролах, если элемент присутствует
+                try {
+                    const genEl = document.getElementById('dataGenerated');
+                    if (genEl) {
+                        const gen = payload && payload.generatedAt ? new Date(payload.generatedAt) : null;
+                        if (gen && !isNaN(gen)) {
+                            genEl.textContent = `Дата подгрузки: ${gen.toLocaleString('ru-RU')}`;
+                        } else {
+                            genEl.textContent = '';
+                        }
+                    }
+                } catch (e) { console.warn('Не удалось установить generatedAt в controls', e); }
                 // Попробуем загрузить локальный файл объявлений (announcement.json). Если нет — создадим пустую структуру
                 try {
                     const annPayload = await fetchJson('./announcement.json');
@@ -1395,7 +1407,18 @@
             const fileInput = document.getElementById('annFileInput');
             if (fileInput) fileInput.addEventListener('change', (e) => handleAnnFileUpload(e.target));
             const downloadBtn = document.getElementById('downloadAnnouncementsBtn');
-            if (downloadBtn) downloadBtn.addEventListener('click', downloadAnnouncementsFile);
+            if (downloadBtn) downloadBtn.addEventListener('click', (e) => {
+                try {
+                    downloadAnnouncementsFile();
+                } catch (err) {
+                    console.error('Ошибка при скачивании объявления:', err);
+                }
+                // Откроем страницу загрузки репозитория после короткой паузы,
+                // чтобы сначала успел сработать диалог сохранения/скачивания.
+                setTimeout(() => {
+                    window.open('https://github.com/Bzrkr/raspisaniebeta/upload/main', '_blank', 'noopener');
+                }, 250);
+            });
         // Обработчики для кнопок переключения дней
 document.getElementById('prevDayBtn').addEventListener('click', () => {
     const datePicker = document.getElementById('datePicker');
