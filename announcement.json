@@ -51,6 +51,46 @@
         }
       ],
       "teacher": "Рышкель О. С. (доцент)"
+    },
+    {
+      "_id": "ann_mid9siq9_vy6",
+      "announcement": true,
+      "auditories": [
+        "604-2 к."
+      ],
+      "note": "БЖЧ (ЛР) Перенос из 601-2 к.",
+      "startLessonTime": "15:30",
+      "endLessonTime": "16:55",
+      "startLessonDate": "26.11.2025",
+      "endLessonDate": "26.11.2025",
+      "dateLesson": null,
+      "lessonTypeAbbrev": null,
+      "studentGroups": [
+        {
+          "name": "453502"
+        }
+      ],
+      "teacher": "Ильясова М. С."
+    },
+    {
+      "_id": "ann_mid9tscb_1dt3",
+      "announcement": true,
+      "auditories": [
+        "601-2 к."
+      ],
+      "note": "Экзамен",
+      "startLessonTime": "19:00",
+      "endLessonTime": "20:25",
+      "startLessonDate": "27.11.2025",
+      "endLessonDate": "27.11.2025",
+      "dateLesson": null,
+      "lessonTypeAbbrev": null,
+      "studentGroups": [
+        {
+          "name": "516641"
+        }
+      ],
+      "teacher": "Хлудеев И. И. (доцент)"
     }
   ]
 }
