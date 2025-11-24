@@ -627,6 +627,34 @@
             return 'ann_' + Date.now().toString(36) + '_' + Math.floor(Math.random() * 100000).toString(36);
         }
 
+        // Составляем сигнатуру урока для детектирования дубликатов
+        function lessonSignature(lesson) {
+            if (!lesson) return '';
+            const parts = [];
+            parts.push(String(lesson.startTime || ''));
+            parts.push(String(lesson.endTime || ''));
+            parts.push(String(lesson.subject || ''));
+            parts.push(String(lesson.teacher || ''));
+            parts.push(String(lesson.dateLesson || ''));
+            parts.push(String(lesson.startDate || ''));
+            parts.push(String(lesson.endDate || ''));
+            // groups may be array of strings
+            try {
+                const groups = (lesson.groups || []).slice().map(g => String(g)).sort();
+                parts.push(JSON.stringify(groups));
+            } catch (e) {
+                parts.push('[]');
+            }
+            // auditories (if present)
+            try {
+                const aud = (lesson.auditories || []).slice().map(a => String(a).trim()).sort();
+                parts.push(JSON.stringify(aud));
+            } catch (e) {
+                parts.push('[]');
+            }
+            return parts.join('||');
+        }
+
         function timeInRange(start, end, target) {
             return start <= target && target <= end;
         }
@@ -821,6 +849,23 @@
                 }
             }
 
+            // Дедупликация: пройдём по всем timeSlot-ам и уберём явные дубликаты (на всякий случай)
+            try {
+                for (const ts of Object.keys(schedule)) {
+                    const arr = schedule[ts];
+                    const seen = new Set();
+                    const deduped = [];
+                    for (const item of arr) {
+                        const sig = lessonSignature(item);
+                        if (!seen.has(sig)) {
+                            seen.add(sig);
+                            deduped.push(item);
+                        }
+                    }
+                    schedule[ts] = deduped;
+                }
+            } catch (e) { /* ignore */ }
+
             // Включаем пользовательские объявления из announcement.json
             try {
                 const annArr = (window.announcementsPayload && Array.isArray(window.announcementsPayload.announcements)) ? window.announcementsPayload.announcements : [];
@@ -876,6 +921,23 @@
                 console.warn('Ошибка при обработке announcement.json', err);
             }
             
+            // Ещё раз убираем дубликаты после добавления пользовательских объявлений
+            try {
+                for (const ts of Object.keys(schedule)) {
+                    const arr = schedule[ts];
+                    const seen = new Set();
+                    const deduped = [];
+                    for (const item of arr) {
+                        const sig = lessonSignature(item);
+                        if (!seen.has(sig)) {
+                            seen.add(sig);
+                            deduped.push(item);
+                        }
+                    }
+                    schedule[ts] = deduped;
+                }
+            } catch (e) { /* ignore */ }
+
             return schedule;
         }
 
