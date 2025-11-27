@@ -733,8 +733,11 @@
             }
         }
 
-        function getLessonTypeClass(lessonType, isAnnouncement = false) {
+        function getLessonTypeClass(lessonType, isAnnouncement = false, annSource = null) {
             if (isAnnouncement) {
+                // Differentiate announcements from schedule vs user-created
+                if (annSource === 'manual') return 'announcement-manual';
+                if (annSource === 'schedule') return 'announcement-schedule';
                 return 'announcement';
             }
             const typeMap = {
@@ -839,7 +842,8 @@
                                             groups: lesson.studentGroups?.map(g => g.name) || [],
                                             startTime: lessonStartTime,
                                             endTime: lessonEndTime,
-                                            isAnnouncement: isAnnouncement
+                                            isAnnouncement: isAnnouncement,
+                                            annSource: isAnnouncement ? 'schedule' : null
                                         });
                                     }
                                 }
@@ -877,8 +881,7 @@
                     const lessonAuditories = Array.isArray(lesson.auditories) ? lesson.auditories.map(a => (a ?? '').trim()) : [];
                     if (lessonAuditories.length === 0 || !lessonAuditories.includes(targetAuditory)) continue;
 
-                    // Если пользователь отключил показы объявлений — пропускаем
-                    if (!showAnnouncements) continue;
+                    // NOTE: manual announcements should be shown regardless of the "showAnnouncements" checkbox
 
                     const startDate = parseDate(lesson.startLessonDate);
                     const endDate = parseDate(lesson.endLessonDate);
@@ -912,7 +915,8 @@
                                 startTime: lessonStartTime,
                                 endTime: lessonEndTime,
                                 isAnnouncement: true,
-                                annId: lesson._id || null
+                                annId: lesson._id || null,
+                                annSource: 'manual'
                             });
                         }
                     }
@@ -1077,7 +1081,7 @@
                             lessons.sort((a, b) => { try { return convertToMinutes(a.startTime) - convertToMinutes(b.startTime); } catch (e) { return 0; } });
                             lessons.forEach(lesson => {
                                 const lessonDiv = document.createElement('div');
-                                const typeClass = getLessonTypeClass(lesson.type, lesson.isAnnouncement);
+                                const typeClass = getLessonTypeClass(lesson.type, lesson.isAnnouncement, lesson.annSource);
                                 lessonDiv.className = `lesson ${typeClass}`;
 
                                 const startTime = (lesson.startTime || '').substring(0, 5);
@@ -1302,7 +1306,7 @@
                             lessonsInThisSlot.sort((a, b) => { try { return convertToMinutes(a.startTime) - convertToMinutes(b.startTime); } catch (e) { return 0; } });
                             const lesson = lessonsInThisSlot[0];
                             const lessonDiv = document.createElement('div');
-                            const typeClass = getLessonTypeClass(lesson.type, lesson.isAnnouncement);
+                            const typeClass = getLessonTypeClass(lesson.type, lesson.isAnnouncement, lesson.annSource);
                             lessonDiv.className = `mobile-lesson ${typeClass}`;
                             const startTime = lesson.startTime.substring(0, 5);
                             const endTime = lesson.endTime.substring(0, 5);

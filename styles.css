@@ -500,6 +500,10 @@ padding: 4px;
         .Instlab{ background-color: #ffffff; border-left: 4px solid #f98f43; }
         .Instlecture{ background-color: #ffffff; border-left: 4px solid #33db24; }
         .announcement{ background-color: #fff3cd; border-left: 4px solid #ffc107; }
+        /* Manual announcements (created via announcement.json / UI) */
+        .announcement-manual { background-color: #fff8e1; border-left: 4px solid #ff9800; }
+        /* Announcements that come from the schedule feed (official) */
+        .announcement-schedule { background-color: #e8f4ff; border-left: 4px solid #2196F3; }
 
         /* Стили для кастомного чекбокса */
         .checkbox-container {
